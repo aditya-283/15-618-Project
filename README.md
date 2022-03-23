@@ -10,9 +10,9 @@ In this project, we will implement a subset of Message Passing Interface (MPI) a
 
 ## Background 
 The subset of MPI that we aim to implement is - 
-* Basic operations: MPI_Init, MPI_Finalize, MPI_Comm_size, MPI_Comm_rank
-* Point-to-point Communication: We will implement synchronous communication primitives - MPI_Send and MPI_Recv.
-* Collective Communication: MPI_Bcast, MPI_Scatter, MPI_Gather, MPI_Reduce
+* Basic operations: `MPI_Init`, `MPI_Finalize`, `MPI_Comm_size`, `MPI_Comm_rank`
+* Point-to-point Synchronous Communication: `MPI_Send` and `MPI_Recv`.
+* Collective Communication: `MPI_Bcast`, `MPI_Scatter`, `MPI_Gather`, `MPI_Reduce`
 
 ## Challenges
 The main challenge of this project is getting a bug-free implementation that implements message passing interface between processes without assuming a shared-memory architecture. This is important because MPI is used in scenarios with multiple physical nodes where sharing memory is not possible at all. All communication will therefore happen via channels (aka pipes) which can be replaced with sockets in the case of a networked cluster. 
@@ -30,27 +30,25 @@ We will run parallel programs using our library on GHC and PSC.
 ## Goals and Deliverables
 The main goal of this project is a functional and correct implementation of MPI that is reasonably performant - applications scale with increasing processor cores.
 
-75% - Basics of process spawning and teardown, synchronous point to point communication
-100% - Collective communication - MPI_Bcast. Ensuring correctness and performance scaling on a test program
-120% - MPI_Scatter, MPI_Gather, MPI_Reduce
+Targets:
+* 75%  - Basics of process spawning and teardown, synchronous point to point communication
+* 100% - Collective communication - `MPI_Bcast`. Ensuring correctness and performance scaling on a test program
+* 125% - Efficient implementations of remaining collective communication primitives - `MPI_Scatter`, `MPI_Gather`, `MPI_Reduce`
 
 ## Schedule
-Week 10 - 04/02 - Process spawning, identification and teardown.
+* Week of 03/27 - Process spawning, identification and teardown.
+* Week of 04/03 - Setup interprocess communication using channels to implement P2P communication primitives.
+* Week of 04/10 - Implement collective commmunication primitives.
 
-Week 11 - 04/09 - Setup interprocess communication using channels to implement P2P communication primitives.
+**Project checkpoint  - 04/11**  
+* Week of 04/17 - Benchmarking and correctness evaluation
+* Week of 04/24 - Writing documentation, final project report and preparing a demo.  
 
-Project checkpoint  - 04/11 
+**Project Report      - 04/29**
 
-Week 12 - 04/16 - Implement collective commmunication primitives.
-
-Week 13 - 04/23 - Benchmarking and correctness evaluation
-
-Week 14 - 04/29 - Writing documentation, final project report and preparing a demo.
-
-Project Report      - 04/29
-
-Presentation        - 05/05
+**Presentation        - 05/05**
 
 ## References
 [1] https://www.open-mpi.org/
+
 [2] https://hpc-tutorials.llnl.gov/mpi/
