@@ -1,0 +1,6 @@
+1. check argument order - diff orders allowed?
+2. diff option names
+3. check  numProc <= max number of processors
+4. CPU affinity 
+5. figure out errno, and return values for errors
+6. Suppress Invalid Option in getopt
