@@ -4,11 +4,19 @@
 #include <unistd.h>
 // #include <cstring>
 
+
 int main(int argc, char* argv[]) {
+
+    // check argument order - diff orders allowed?
+    // diff option names
+    // check  numProc <= max number of processors
+    // CPU affinity 
+    // figure out errno, and return values for errors
+
     int opt = 0;
     char *executable = NULL;
-    char rankBuffer[5];
-    int numProc;
+    char rankBuffer[100];
+    int numProc=0;
     do {
         opt = getopt(argc, argv, "e:n:");
         switch (opt) {
@@ -21,10 +29,10 @@ int main(int argc, char* argv[]) {
         }
     } while (opt != -1);
 
-    printf("MPIARGS %s %d\n", executable, numProc);
-    for (int i=0; i<argc; i++) {
-        printf("i=%i argv=%s \n", i, argv[i]);
-    }
+    // printf("MPIARGS %s %d\n", executable, numProc);
+    // for (int i=0; i<argc; i++) {
+    //     printf("i=%i argv=%s \n", i, argv[i]);
+    // }
 
     // argv[2] = itoa(numProc);
 
@@ -32,15 +40,14 @@ int main(int argc, char* argv[]) {
         int pid = fork();
         if (pid == 0) {
             //parent
-            itoa(i, rankBuffer, 10);
+            snprintf(rankBuffer, sizeof(rankBuffer), "%d", i);
             argv[3] = rankBuffer;
             execve(executable, argv+2, NULL);
             break;
         } else {
             //child
-            i++;
-            if (i == numProc - 1) {
-                itoa(i, rankBuffer, 10);
+            if (i == numProc - 2) {
+                snprintf(rankBuffer, sizeof(rankBuffer), "%d", i + 1);
                 argv[3] = rankBuffer;
                 execve(executable, argv+2, NULL);
                 break;
