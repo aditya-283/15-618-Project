@@ -4,3 +4,4 @@
 4. CPU affinity 
 5. figure out errno, and return values for errors
 6. Suppress Invalid Option in getopt
+7. Citation from 18-613/15-213

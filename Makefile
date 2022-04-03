@@ -2,19 +2,24 @@
 CXX = g++ -m64 -std=c++11
 CXXFLAGS = -I. -O3 -Wall
 
-mpirun: mpirun.o mpi.o 
-	$(CXX) $(CXXFLAGS) mpirun.o mpi.o -o mpirun
+# Executables
+mpirun: mpirun.o mpi.o socket.o
+	$(CXX) $(CXXFLAGS) mpirun.o mpi.o socket.o -o mpirun
 
-mpirun.o: mpirun.cpp mpi.cpp mpi.h
+output: helloworld.o mpi.o socket.o
+	$(CXX) $(CXXFLAGS) helloworld.o mpi.o socket.o -o output
+
+# Object Files
+mpirun.o: mpirun.cpp
 	$(CXX) $(CXXFLAGS) -c mpirun.cpp
 
 mpi.o: mpi.cpp
 	$(CXX) $(CXXFLAGS) -c mpi.cpp
 
-output: helloworld.o mpi.o
-	$(CXX) $(CXXFLAGS) helloworld.o mpi.o -o output
+socket.o: socket.cpp
+	$(CXX) $(CXXFLAGS) -c socket.cpp
 
-helloworld.o: helloworld.cpp mpirun
+helloworld.o: helloworld.cpp
 	$(CXX) $(CXXFLAGS) -c helloworld.cpp 
 
 clean: 
