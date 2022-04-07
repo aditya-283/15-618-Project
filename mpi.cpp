@@ -20,7 +20,7 @@ static inline int getPortId (int procId) {
 }
 
 static inline void getPortString(int procId, char* listenPortStr, int size) {
-    snprintf(listenPortStr, size, "%d", getPortId(pId));
+    snprintf(listenPortStr, size, "%d", getPortId(procId));
 }
 
 int MPI_Init(int *argc, char*** argv) {
@@ -55,7 +55,7 @@ int MPI_Finalize(void) {
 
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest) {
     char destPortStr[10];
-    getPortString(pId, destPortStr, 10);
+    getPortString(dest, destPortStr, 10);
     int destFd = open_clientfd("localhost", destPortStr);
     ssize_t bytes_transacted = rio_writen(destFd, buf, count * datatype);
     if (bytes_transacted < (ssize_t)(count * datatype)) {
