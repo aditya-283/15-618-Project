@@ -6,14 +6,17 @@
 #include "socket.h"
 #include <sys/socket.h> /* struct sockaddr */
 #include <sys/types.h>  /* struct sockaddr */
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "rio.h"
 #include <string.h>
 
-#define LISTEN_PORT_OFFSET 2500
+#define LISTEN_PORT_OFFSET 3350
 #define MAXBUF 1024 
 static int nProc;
 static int pId;
 static int listenfd = -1;
+static struct sockaddr_storage clientaddr;
 
 static inline int getPortId (int procId) {
     return LISTEN_PORT_OFFSET + procId;
@@ -31,10 +34,10 @@ int MPI_Init(int *argc, char*** argv) {
 
     char listenPortStr[10];
     getPortString(pId, listenPortStr, 10);
-    printf("LISTENPORTSTR %s\n", listenPortStr);
     listenfd = open_listenfd(listenPortStr);
     if (listenfd < 0) {
-        printf("Process ID: %d - open_listenfd: returned %d with errno %d\n", pId, listenfd, errno);
+        printf("Process ID: %d Error - open_listenfd: returned %d with errno %d\n", pId, listenfd, errno);
+        return -1;
     }
     return 0;
 }
@@ -50,16 +53,29 @@ int MPI_Comm_size(int* numProc) {
 }
 
 int MPI_Finalize(void) {
+    waitpid(-1, NULL, 0);
+    printf("Process ID: %d Finalize with Port %d and ListenFD %d\n", pId, getPortId(pId), listenfd);
+    if (close(listenfd)) {
+        printf("Process ID: %d Error Closing ListenFD %d\n", pId, listenfd);
+    }
+    // Sync with all process somehow
+    // exit(0);
     return 0;
 }
 
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest) {
     char destPortStr[10];
     getPortString(dest, destPortStr, 10);
-    int destFd = open_clientfd("localhost", destPortStr);
+    int destFd = -1;
+    while (destFd < 0) {
+        destFd = open_clientfd("localhost", destPortStr);
+        // printf("Process ID: %d Error opening Destination Client FD\n", pId);
+        // return -1;
+    }
     ssize_t bytes_transacted = rio_writen(destFd, buf, count * datatype);
     if (bytes_transacted < (ssize_t)(count * datatype)) {
-        printf("Short write detected!\n");
+        printf("Process ID: %d Error Short write detected! Wrote %ld of %d\n", pId, bytes_transacted, (count * datatype));
+        close(destFd);
         return -1;
     }
     close(destFd);
@@ -68,15 +84,14 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest) {
 
 int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status *status) {
     int client_fd = -1;
-    struct sockaddr_storage clientaddr;
-    socklen_t clientlen = 0;
-    clientlen = sizeof(struct sockaddr_storage);
+    socklen_t clientlen = sizeof(struct sockaddr_storage);
     client_fd = accept(listenfd, (struct sockaddr*)&clientaddr, &clientlen);
+    printf("Process ID: %d MPI_Recv: ClientFD %d\n", pId, client_fd);
     if (client_fd < 0) {
-        printf("Accept failed!\n");
+        printf("Process ID: %d Error Accept failed!\n", pId);
         return -1;
     }
-
+    
     rio_t client_rio;
     rio_readinitb(&client_rio, client_fd);
     char msg_buffer[MAXBUF] = {'\0'};
