@@ -4,9 +4,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include "socket.h"
+#include <sys/socket.h> /* struct sockaddr */
+#include <sys/types.h>  /* struct sockaddr */
+#include "rio.h"
 
 #define LISTEN_PORT_OFFSET 2000
-
+#define MAXBUF 1024 
 static int nProc;
 static int pId;
 static int listenfd = -1;
@@ -54,7 +57,21 @@ int MPI_Send(const void *buf, int count, MPI_Datatype MPI_Datatype, int dest) {
 }
 
 int MPI_Recv(void *buf, int count, MPI_Datatype MPI_Datatype, int source, MPI_Status *status) {
-    // Accept Connection
+    int client_fd = -1;
+    struct sockaddr_storage clientaddr;
+    socklen_t clientlen = 0;
+    clientlen = sizeof(struct sockaddr_storage);
+    client_fd = accept(getPortId(pId), (struct sockaddr*)&clientaddr, &clientlen);
+    if (client_fd < 0) {
+        printf("Accept failed!\n");
+    }
+
+    rio_t client_rio;
+    rio_readinitb(&client_rio, client_fd);
+    char msg_buffer[MAXBUF] = {'\0'};
+    int bytes_transacted;
+    while  ((bytes_transacted = ))
+    return 0;
 
     // Recieve
 

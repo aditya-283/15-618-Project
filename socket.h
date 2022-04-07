@@ -9,4 +9,4 @@
 int open_clientfd(const char *hostname, const char *port);
 int open_listenfd(const char *port);
 
-#endif /* CSAPP_H */
+#endif /* SOCKET_H */
