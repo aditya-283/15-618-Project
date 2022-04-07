@@ -35,10 +35,10 @@ int main(int argc, char* argv[]) {
             //child
             if (i == numProc - 2) {
                 snprintf(rankBuffer, sizeof(rankBuffer), "%d", i + 1);
-                argv[3] = rankBuffer;
+                argv[3] = rankBuffer;;
                 execve(executable, argv+2, NULL);
                 break;
-            }
+            }   
         }
     }
 }
