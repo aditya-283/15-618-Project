@@ -1,3 +1,9 @@
+/* Imported from 18-613: Foundations of Computer Systems (Lab-7 Proxy Lab) */
+#include <rio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+
 /**************************************** 
  * The Rio package - Robust I/O functions 
  ****************************************/ 
@@ -5,12 +11,6 @@
 /* 
  * rio_readn - Robustly read n bytes (unbuffered) 
  */
-
-#include <rio.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-
 ssize_t rio_readn(int fd, void *usrbuf, size_t n) 
 { 
     size_t nleft = n; 

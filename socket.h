@@ -4,6 +4,7 @@
 #define SOCKET_H
 
 #define LISTENQ 1024 /* Second argument to listen() */
+#define LISTEN_PORT_OFFSET 3000
 
 /* Reentrant protocol-independent client/server helpers */
 int open_clientfd(const char *hostname, const char *port);

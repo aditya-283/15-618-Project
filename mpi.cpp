@@ -11,10 +11,22 @@
 #include "rio.h"
 #include <string.h>
 
-#define LISTEN_PORT_OFFSET 3350
-#define MAXBUF 1024 
-static int nProc;
-static int pId;
+#define printError(funcName, ...);                                  \
+        if (PRINT_ERRORS) {                                         \
+            printf("Process %d: Error in %s() - ", processId, funcName);  \
+            printf(__VA_ARGS__);                                    \
+            printf("\n");                                           \
+        }
+
+#define printMessage(...);                                          \
+            printf("Process %d: %s", processId, __VA_ARGS__);             \
+            printf(__VA_ARGS__);                                    \
+            printf("\n");
+
+#define PRINT_ERRORS 1
+
+static int numProcess;
+static int processId;
 static int listenfd = -1;
 static struct sockaddr_storage clientaddr;
 
@@ -27,36 +39,34 @@ static inline void getPortString(int procId, char* listenPortStr, int size) {
 }
 
 int MPI_Init(int *argc, char*** argv) {
-    nProc = atoi(*argv[0]);
-    pId = atoi((*argv)[1]);
+    numProcess = atoi(*argv[0]);
+    processId = atoi((*argv)[1]);
     *argc = *argc - 2;
     *argv = *argv + 2;
 
     char listenPortStr[10];
-    getPortString(pId, listenPortStr, 10);
+    getPortString(processId, listenPortStr, 10);
     listenfd = open_listenfd(listenPortStr);
     if (listenfd < 0) {
-        printf("Process ID: %d Error - open_listenfd: returned %d with errno %d\n", pId, listenfd, errno);
+        printError("MPI_Init", "open_listenfd: returned %d with errno %d", listenfd, errno);
         return -1;
     }
     return 0;
 }
 
 int MPI_Comm_rank(int* procId) {
-    *procId = pId;
+    *procId = processId;
     return 0;
 }
 
 int MPI_Comm_size(int* numProc) {
-    *numProc = nProc;
+    *numProc = numProcess;
     return 0;
 }
 
 int MPI_Finalize(void) {
-    waitpid(-1, NULL, 0);
-    printf("Process ID: %d Finalize with Port %d and ListenFD %d\n", pId, getPortId(pId), listenfd);
     if (close(listenfd)) {
-        printf("Process ID: %d Error Closing ListenFD %d\n", pId, listenfd);
+        printError("MPI_Finalize", "Unable to close listenfd.");
     }
     // Sync with all process somehow
     // exit(0);
@@ -64,44 +74,50 @@ int MPI_Finalize(void) {
 }
 
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest) {
-    char destPortStr[10];
-    getPortString(dest, destPortStr, 10);
     int destFd = -1;
+    char destPortStr[10];
+    ssize_t bytes_transacted = 0;
+    
+    // Open Connection with the destination process
+    getPortString(dest, destPortStr, 10);
     while (destFd < 0) {
         destFd = open_clientfd("localhost", destPortStr);
-        // printf("Process ID: %d Error opening Destination Client FD\n", pId);
-        // return -1;
     }
-    ssize_t bytes_transacted = rio_writen(destFd, buf, count * datatype);
+
+    // Send the data to the destination process
+    bytes_transacted = rio_writen(destFd, buf, count * datatype);
     if (bytes_transacted < (ssize_t)(count * datatype)) {
-        printf("Process ID: %d Error Short write detected! Wrote %ld of %d\n", pId, bytes_transacted, (count * datatype));
+        printError("MPI_Send", "Short write detected!");
         close(destFd);
         return -1;
     }
     close(destFd);
+
     return 0;
 }
 
 int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status *status) {
-    int client_fd = -1;
-    socklen_t clientlen = sizeof(struct sockaddr_storage);
-    client_fd = accept(listenfd, (struct sockaddr*)&clientaddr, &clientlen);
-    printf("Process ID: %d MPI_Recv: ClientFD %d\n", pId, client_fd);
-    if (client_fd < 0) {
-        printf("Process ID: %d Error Accept failed!\n", pId);
+    socklen_t clientlen;
+    int sourceFd = -1;
+    rio_t sourceRio;
+    ssize_t bytes_transacted;
+    ssize_t readUntilNow = 0;
+     
+    // Open Connection with the source process
+    clientlen = sizeof(struct sockaddr_storage);
+    sourceFd = accept(listenfd, (struct sockaddr*)&clientaddr, &clientlen);
+    if (sourceFd < 0) {
+        printError("MPI_Recv", "Accept Failed.");
         return -1;
     }
     
-    rio_t client_rio;
-    rio_readinitb(&client_rio, client_fd);
-    char msg_buffer[MAXBUF] = {'\0'};
-    ssize_t bytes_transacted;
-    ssize_t readUntilNow = 0;
-    while  ((bytes_transacted = rio_readnb(&client_rio, msg_buffer, MAXBUF)) != 0) {
+    // Read the data and save it into the buffer
+    rio_readinitb(&sourceRio, sourceFd);
+    while ((bytes_transacted = rio_readnb(&sourceRio, (char *)buf + readUntilNow, count * datatype))) {
         if (readUntilNow > (ssize_t)(count * datatype)) break;
-        memcpy((char*)buf + readUntilNow, msg_buffer, bytes_transacted);
         readUntilNow += bytes_transacted;
     }
-    close(client_fd);
+    close(sourceFd);
+
     return 0;
 }

@@ -1,14 +1,12 @@
 /* Imported from 18-613: Foundations of Computer Systems (Lab-7 Proxy Lab) */
-
 #ifndef RIO_H
 #define RIO_H
 
 #include <stddef.h>    /* size_t */ 
 #include <sys/types.h> /* ssize_t */
+
 /* Persistent state for the robust I/O (Rio) package */ 
 #define RIO_BUFSIZE 8192 
-
-
 
 typedef struct 
 { 

@@ -9,6 +9,7 @@ typedef struct MPI_Status_ {
     int MPI_ERROR;
 } MPI_Status;
 
+
 typedef enum MPI_Datatype_ {
     MPI_CHAR = sizeof(char),
     MPI_INT = sizeof(int),
