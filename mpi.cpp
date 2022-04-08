@@ -11,16 +11,16 @@
 #include "rio.h"
 #include <string.h>
 
-#define printError(funcName, ...);                                  \
-        if (PRINT_ERRORS) {                                         \
-            printf("Process %d: Error in %s() - ", processId, funcName);  \
-            printf(__VA_ARGS__);                                    \
-            printf("\n");                                           \
+#define printError(funcName, ...);                                      \
+        if (PRINT_ERRORS) {                                             \
+            printf("Process %d: Error in %s() - ", processId, funcName);\
+            printf(__VA_ARGS__);                                        \
+            printf("\n");                                               \
         }
 
-#define printMessage(...);                                          \
-            printf("Process %d: %s", processId, __VA_ARGS__);             \
-            printf(__VA_ARGS__);                                    \
+#define printMessage(...);                                              \
+            printf("Process %d: %s", processId, __VA_ARGS__);           \
+            printf(__VA_ARGS__);                                        \
             printf("\n");
 
 #define PRINT_ERRORS 1
