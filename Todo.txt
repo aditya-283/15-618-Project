@@ -3,6 +3,6 @@
 3. check  numProc <= max number of processors
 4. CPU affinity 
 5. figure out errno, and return values for errors
-6. Suppress Invalid Option in getopt
-7. Citation from 18-613/15-213
-8. Process 0 didn't stall execution at MPI_REcv.. Check and fix this
+6. Citation from 18-613/15-213
+7. Process 0 didn't stall execution at MPI_REcv.. Check and fix this
+8. MPI_Gather function needs to be modified (Read Comments)

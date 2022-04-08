@@ -33,4 +33,6 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status
 
 int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root);
 
+int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root);
+
 #endif

@@ -31,7 +31,7 @@
 
 
 typedef struct {
-    int destProc;
+    int proc;
     int count;
     MPI_Datatype datatype;
     void *buf;
@@ -134,41 +134,69 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status
     return 0;
 }
 
-void *sendBcastData(void *varg)
+static void *sendBcastData(void *varg)
 {
     threadArgs_t *threadArg = (threadArgs_t *) varg;
-    int destProc = threadArg->destProc;
-    int count = threadArg->count;
-    MPI_Datatype datatype = threadArg->datatype;
-    void *buf = threadArg->buf;
-    
-    // pthread_detach(pthread_self());
-    MPI_Send(buf, count, datatype, destProc);
-    printMessage("Finished Sending the data to %d", destProc);
-
+    MPI_Send(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc);
     free(threadArg);
-    pthread_exit(NULL);
+    return 0;
 }
 
 int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root) {
     if (processId == root) {
         // Send to all the processes
-        pthread_t threadId;
+        pthread_t threadId[numProcess];
         for (int destProc = 0; destProc < numProcess; destProc ++) {
             if (destProc == root) continue;
             threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
-            threadArg->destProc = destProc;
+            threadArg->proc = destProc;
             threadArg->count = count;
             threadArg->datatype = datatype;
             threadArg->buf = buf;
-            pthread_create(&threadId, NULL, sendBcastData, (void *) threadArg);
-            pthread_join(threadId, NULL);
+            pthread_create(&threadId[destProc], NULL, sendBcastData, (void *) threadArg);
+        }
+        for (int i = 0; i < numProcess; i ++) {
+            if (i == root) continue;
+            pthread_join(threadId[i], NULL);
         }
     } else {
         // Receive from root process
         MPI_Status status;
-        printMessage("Starting to receive Data from Root");
         MPI_Recv(buf, count, datatype, root, &status);
+    }
+    return 0;
+}
+
+
+void *recvGatherData(void *varg)
+{
+    threadArgs_t *threadArg = (threadArgs_t *) varg;
+    MPI_Status status;
+    MPI_Recv(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, &status);
+    free(threadArg);
+    return 0;
+}
+
+int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root) {
+    if (processId == root) {
+        // Receive data from other processes
+        pthread_t threadId[numProcess];
+        for (int sourceProc = 0; sourceProc < numProcess; sourceProc ++) {
+            if (sourceProc == root) continue;
+            threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
+            threadArg->proc = sourceProc;
+            threadArg->count = recvcount;   // MODIFY: How many count from individual process?
+            threadArg->datatype = recvtype;
+            threadArg->buf = recvbuf;       // MODIFY: Offset for everyprocess and copy the root data to recvbuf
+            pthread_create(&threadId[sourceProc], NULL, recvGatherData, (void *) threadArg);
+        }
+        for (int i = 0; i < numProcess; i ++) {
+            if (i == root) continue;
+            pthread_join(threadId[i], NULL);
+        }
+    } else {
+        // Send data to root process
+        MPI_Send(sendbuf, sendcount, sendtype, root);
     }
     return 0;
 }
