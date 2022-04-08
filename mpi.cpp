@@ -1,15 +1,19 @@
+#include "mpi.h"
+#include "socket.h"
+#include "rio.h"
 #include <cstdio>
 #include <cstdlib>
-#include "mpi.h"
 #include <unistd.h>
 #include <errno.h>
-#include "socket.h"
 #include <sys/socket.h> /* struct sockaddr */
 #include <sys/types.h>  /* struct sockaddr */
 #include <sys/types.h>
 #include <sys/wait.h>
-#include "rio.h"
 #include <string.h>
+#include <pthread.h>
+
+#define PRINT_ERRORS 1
+#define PRINT_MESSAGES 1
 
 #define printError(funcName, ...);                                      \
         if (PRINT_ERRORS) {                                             \
@@ -19,11 +23,19 @@
         }
 
 #define printMessage(...);                                              \
-            printf("Process %d: %s", processId, __VA_ARGS__);           \
+        if (PRINT_MESSAGES) {                                           \
+            printf("Process %d: ", processId);                          \
             printf(__VA_ARGS__);                                        \
-            printf("\n");
+            printf("\n");                                               \
+        }
 
-#define PRINT_ERRORS 1
+
+typedef struct {
+    int destProc;
+    int count;
+    MPI_Datatype datatype;
+    void *buf;
+} threadArgs_t;
 
 static int numProcess;
 static int processId;
@@ -119,5 +131,44 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status
     }
     close(sourceFd);
 
+    return 0;
+}
+
+void *sendBcastData(void *varg)
+{
+    threadArgs_t *threadArg = (threadArgs_t *) varg;
+    int destProc = threadArg->destProc;
+    int count = threadArg->count;
+    MPI_Datatype datatype = threadArg->datatype;
+    void *buf = threadArg->buf;
+    
+    // pthread_detach(pthread_self());
+    MPI_Send(buf, count, datatype, destProc);
+    printMessage("Finished Sending the data to %d", destProc);
+
+    free(threadArg);
+    pthread_exit(NULL);
+}
+
+int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root) {
+    if (processId == root) {
+        // Send to all the processes
+        pthread_t threadId;
+        for (int destProc = 0; destProc < numProcess; destProc ++) {
+            if (destProc == root) continue;
+            threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
+            threadArg->destProc = destProc;
+            threadArg->count = count;
+            threadArg->datatype = datatype;
+            threadArg->buf = buf;
+            pthread_create(&threadId, NULL, sendBcastData, (void *) threadArg);
+            pthread_join(threadId, NULL);
+        }
+    } else {
+        // Receive from root process
+        MPI_Status status;
+        printMessage("Starting to receive Data from Root");
+        MPI_Recv(buf, count, datatype, root, &status);
+    }
     return 0;
 }
