@@ -5,4 +5,3 @@
 5. figure out errno, and return values for errors
 6. Citation from 18-613/15-213
 7. MPI_Gather function needs to be modified (Read Comments)
-8. MPI_Recv doesn't check for source process connect. Accepts connection and proceeds
