@@ -1,29 +1,41 @@
+#include "mpi.h"
+#include "socket.h"
+#include "rio.h"
 #include <cstdio>
 #include <cstdlib>
-#include "mpi.h"
 #include <unistd.h>
 #include <errno.h>
-#include "socket.h"
 #include <sys/socket.h> /* struct sockaddr */
 #include <sys/types.h>  /* struct sockaddr */
 #include <sys/types.h>
 #include <sys/wait.h>
-#include "rio.h"
 #include <string.h>
-
-#define printError(funcName, ...);                                  \
-        if (PRINT_ERRORS) {                                         \
-            printf("Process %d: Error in %s() - ", processId, funcName);  \
-            printf(__VA_ARGS__);                                    \
-            printf("\n");                                           \
-        }
-
-#define printMessage(...);                                          \
-            printf("Process %d: %s", processId, __VA_ARGS__);             \
-            printf(__VA_ARGS__);                                    \
-            printf("\n");
+#include <pthread.h>
 
 #define PRINT_ERRORS 1
+#define PRINT_MESSAGES 1
+
+#define printError(funcName, ...);                                      \
+        if (PRINT_ERRORS) {                                             \
+            printf("MPI.CPP  Process %d: Error in %s() - ", processId, funcName);\
+            printf(__VA_ARGS__);                                        \
+            printf("\n");                                               \
+        }
+
+#define printMessage(...);                                              \
+        if (PRINT_MESSAGES) {                                           \
+            printf("MPI.CPP  Process %d: ", processId);                 \
+            printf(__VA_ARGS__);                                        \
+            printf("\n");                                               \
+        }
+
+
+typedef struct {
+    int proc;
+    int count;
+    MPI_Datatype datatype;
+    void *buf;
+} threadArgs_t;
 
 static int numProcess;
 static int processId;
@@ -119,5 +131,78 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status
     }
     close(sourceFd);
 
+    return 0;
+}
+
+static void *sendBcastData(void *varg)
+{
+    threadArgs_t *threadArg = (threadArgs_t *) varg;
+    MPI_Send(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc);
+    free(threadArg);
+    return 0;
+}
+
+int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root) {
+    if (processId == root) {
+        // Send to all the processes
+        pthread_t threadId[numProcess];
+        for (int destProc = 0; destProc < numProcess; destProc ++) {
+            if (destProc == root) continue;
+            threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
+            threadArg->proc = destProc;
+            threadArg->count = count;
+            threadArg->datatype = datatype;
+            threadArg->buf = buf;
+            pthread_create(&threadId[destProc], NULL, sendBcastData, (void *) threadArg);
+        }
+        for (int i = 0; i < numProcess; i ++) {
+            if (i == root) continue;
+            pthread_join(threadId[i], NULL);
+        }
+    } else {
+        // Receive from root process
+        MPI_Status status;
+        MPI_Recv(buf, count, datatype, root, &status);
+    }
+    return 0;
+}
+
+
+void *recvGatherData(void *varg)
+{
+    threadArgs_t *threadArg = (threadArgs_t *) varg;
+    MPI_Status status;
+    MPI_Recv(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, &status);
+    // printMessage("In Thread: SourceProc %d Data %d", threadArg->proc, *(int*)(threadArg->buf));
+    free(threadArg);
+    return 0;
+}
+
+int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root) {
+    if (processId == root) {
+        // Receive data from other processes
+        pthread_t threadId[numProcess];
+        for (int sourceProc = 0; sourceProc < numProcess; sourceProc ++) {
+            if (sourceProc == root) continue;
+            threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
+            threadArg->proc = sourceProc;
+            threadArg->count = recvcount;
+            threadArg->datatype = recvtype;
+            threadArg->buf = (void*) ((char *) recvbuf + (recvcount * recvtype * sourceProc));
+            pthread_create(&threadId[sourceProc], NULL, recvGatherData, (void *) threadArg);
+        }
+        // Could still do this memcpy in another separate thread
+        void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype) * root);
+        memcpy(destBuf, sendbuf, sendcount * sendtype);
+
+        for (int i = 0; i < numProcess; i ++) {
+            if (i == root) continue;
+            pthread_join(threadId[i], NULL);
+        }
+    } else {
+        // Send data to root process
+        // printMessage("Sending Data %d", *(int*)(sendbuf));
+        MPI_Send(sendbuf, sendcount, sendtype, root);
+    }
     return 0;
 }

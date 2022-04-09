@@ -1,6 +1,6 @@
 
 CXX = g++ -m64 -std=c++11
-CXXFLAGS = -I. -O3 -Wall
+CXXFLAGS = -pthread -I. -O3 -Wall
 
 # Run all executables
 all: mpirun output
