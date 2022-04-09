@@ -39,15 +39,15 @@ typedef struct {
 
 static int numProcess;
 static int processId;
-static int listenfd = -1;
+static int *listenfd;
 static struct sockaddr_storage clientaddr;
 
-static inline int getPortId (int procId) {
-    return LISTEN_PORT_OFFSET + procId;
+static inline int getPortId (int procId, int portOffset) {
+    return LISTEN_PORT_OFFSET + (numProcess * procId) + portOffset;
 }
 
-static inline void getPortString(int procId, char* listenPortStr, int size) {
-    snprintf(listenPortStr, size, "%d", getPortId(procId));
+static inline void getPortStr(int procId, int portOffset, char* listenPortStr, int size) {
+    snprintf(listenPortStr, size, "%d", getPortId(procId, portOffset));
 }
 
 int MPI_Init(int *argc, char*** argv) {
@@ -57,11 +57,14 @@ int MPI_Init(int *argc, char*** argv) {
     *argv = *argv + 2;
 
     char listenPortStr[10];
-    getPortString(processId, listenPortStr, 10);
-    listenfd = open_listenfd(listenPortStr);
-    if (listenfd < 0) {
-        printError("MPI_Init", "open_listenfd: returned %d with errno %d", listenfd, errno);
-        return -1;
+    listenfd = (int *) malloc(sizeof(int) * numProcess);
+    for (int index = 0; index < numProcess; index ++) {
+        getPortStr(processId, index, listenPortStr, 10);
+        listenfd[index] = open_listenfd(listenPortStr);
+        if (listenfd[index] < 0) {
+            printError("MPI_Init", "open_listenfd: FD %d returned %d with errno %d", index, listenfd[index], errno);
+            return -1;
+        }
     }
     return 0;
 }
@@ -77,8 +80,10 @@ int MPI_Comm_size(int* numProc) {
 }
 
 int MPI_Finalize(void) {
-    if (close(listenfd)) {
-        printError("MPI_Finalize", "Unable to close listenfd.");
+    for (int index = 0; index < numProcess; index ++) {
+        if (close(listenfd[index])) {
+            printError("MPI_Finalize", "Unable to close listenfd %d.", index);
+        }
     }
     // Sync with all process somehow
     // exit(0);
@@ -91,7 +96,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest) {
     ssize_t bytes_transacted = 0;
     
     // Open Connection with the destination process
-    getPortString(dest, destPortStr, 10);
+    getPortStr(dest, processId, destPortStr, 10);
     while (destFd < 0) {
         destFd = open_clientfd("localhost", destPortStr);
     }
@@ -117,7 +122,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status
      
     // Open Connection with the source process
     clientlen = sizeof(struct sockaddr_storage);
-    sourceFd = accept(listenfd, (struct sockaddr*)&clientaddr, &clientlen);
+    sourceFd = accept(listenfd[source], (struct sockaddr*)&clientaddr, &clientlen);
     if (sourceFd < 0) {
         printError("MPI_Recv", "Accept Failed.");
         return -1;
@@ -173,7 +178,6 @@ void *recvGatherData(void *varg)
     threadArgs_t *threadArg = (threadArgs_t *) varg;
     MPI_Status status;
     MPI_Recv(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, &status);
-    // printMessage("In Thread: SourceProc %d Data %d", threadArg->proc, *(int*)(threadArg->buf));
     free(threadArg);
     return 0;
 }
@@ -192,7 +196,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
             pthread_create(&threadId[sourceProc], NULL, recvGatherData, (void *) threadArg);
         }
         // Could still do this memcpy in another separate thread
-        void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype) * root);
+        void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype * root));
         memcpy(destBuf, sendbuf, sendcount * sendtype);
 
         for (int i = 0; i < numProcess; i ++) {
@@ -201,7 +205,6 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
         }
     } else {
         // Send data to root process
-        // printMessage("Sending Data %d", *(int*)(sendbuf));
         MPI_Send(sendbuf, sendcount, sendtype, root);
     }
     return 0;
