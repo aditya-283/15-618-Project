@@ -17,14 +17,14 @@
 
 #define printError(funcName, ...);                                      \
         if (PRINT_ERRORS) {                                             \
-            printf("Process %d: Error in %s() - ", processId, funcName);\
+            printf("MPI.CPP  Process %d: Error in %s() - ", processId, funcName);\
             printf(__VA_ARGS__);                                        \
             printf("\n");                                               \
         }
 
 #define printMessage(...);                                              \
         if (PRINT_MESSAGES) {                                           \
-            printf("Process %d: ", processId);                          \
+            printf("MPI.CPP  Process %d: ", processId);                 \
             printf(__VA_ARGS__);                                        \
             printf("\n");                                               \
         }
@@ -173,6 +173,7 @@ void *recvGatherData(void *varg)
     threadArgs_t *threadArg = (threadArgs_t *) varg;
     MPI_Status status;
     MPI_Recv(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, &status);
+    // printMessage("In Thread: SourceProc %d Data %d", threadArg->proc, *(int*)(threadArg->buf));
     free(threadArg);
     return 0;
 }
@@ -185,17 +186,22 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
             if (sourceProc == root) continue;
             threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
             threadArg->proc = sourceProc;
-            threadArg->count = recvcount;   // MODIFY: How many count from individual process?
+            threadArg->count = recvcount;
             threadArg->datatype = recvtype;
-            threadArg->buf = recvbuf;       // MODIFY: Offset for everyprocess and copy the root data to recvbuf
+            threadArg->buf = (void*) ((char *) recvbuf + (recvcount * recvtype * sourceProc));
             pthread_create(&threadId[sourceProc], NULL, recvGatherData, (void *) threadArg);
         }
+        // Could still do this memcpy in another separate thread
+        void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype) * root);
+        memcpy(destBuf, sendbuf, sendcount * sendtype);
+
         for (int i = 0; i < numProcess; i ++) {
             if (i == root) continue;
             pthread_join(threadId[i], NULL);
         }
     } else {
         // Send data to root process
+        // printMessage("Sending Data %d", *(int*)(sendbuf));
         MPI_Send(sendbuf, sendcount, sendtype, root);
     }
     return 0;
