@@ -61,7 +61,7 @@ To test - clone the project, run `make` and then invoke the example program usin
 
 In summary, we have been able to deliver what we promised for the checkpoint. In fact, we're ahead of what we anticipated since we've also completed the first version of our code for `MPI_Bcast` and `MPI_Gather`. These remain to be tested rigorously for correctness. After that is done, our next goals, broadly, will be detailed benchmarking on GHC and PSC. The data we collect will help us understand the bottlenecks in our implementation and target better performance. If time permits, we will implement more sophisticated collective communication algorithms.
 
-Following is a schedule for the coming week  - 
+Following is a schedule for the coming few weeks. 
 
 | Week | Task | Assignee |
 | :-: | :-: | :-: |
