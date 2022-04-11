@@ -72,6 +72,6 @@ Following is a schedule for the coming few weeks.
 |  Week of 04/24 | Project demo code, code-clean up, pending bug-fixes | Karthik|
 |  Week of 04/24 | Project report with performance analysis  | Aditya|
 
-Our major concerns are about getting comparable performance for parallel programs written using our library to that achieved using MPI. We are confident of achieving our 100% milestone by this week - of correct and performant implementations of `MPI_Bcast` and `MPI_Gather`. We are also bullish on achieving the 125% milestone of writing performant implementations of collective communication and comparing communication topologies (tree-based versus ring-based) for `MPI_Reduce`.
+Our major concerns are about getting comparable performance for parallel programs written using our library to that achieved using MPI. We are confident of achieving our 100% milestone by this week - of correct and performant implementations of `MPI_Bcast` and `MPI_Gather`. We are also bullish on achieving the 125% milestone of writing performant implementations of `MPI_Reduce` and comparing communication topologies (tree-based versus ring-based) for the same.
 
 For the poster session, we will demonstrate the working of our library on PSC with 64 or 128 cores. We will choose a computation-heavy parallelizable problem of the right size, such that both sequential and parallel versions finish in the duration and the speed-up with the parallel version is clearly seen.
