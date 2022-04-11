@@ -4,9 +4,9 @@
 #include <unistd.h>
 #include <string.h>
 
-#define SYNC_SEND_RECEIVE   0
+#define SYNC_SEND_RECEIVE   1
 #define BROADCAST           0
-#define GATHER              1
+#define GATHER              0
 
 #define ROOT_PROCESS        0
 

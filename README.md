@@ -52,3 +52,31 @@ Targets:
 [1] https://www.open-mpi.org/
 
 [2] https://hpc-tutorials.llnl.gov/mpi/
+
+
+## [UPDATE] MILESTONE 04/11/2022
+
+We have completed the following - process spawning, identification and teardown, and synchronous point to point communication using the primitives `MPI_Send` and `MPI_Recv`. We have used the same API for all subroutines as MPI, implying we had to implement initialization and finalization functions like `MPI_Init` and `MPI_Finalize` and create an executable `mpirun` that takes a command line argumennt and an executable and spawns identical parallel processes as desired. The passed executable can take arbitrary command line arguments. To have a similar interface, we have also implemented a useful subset of data types of type `MPI_Datatype` which gives us to flexible mechanism to marhsall and interpret communicated data. The above is fully tested on simple message-passing example code, presented in `helloworld.cpp` where odd numbered processes send a message to even numbered processes. We have stress-tested the above for various failure modes and can confirm that our implementation is correct and deadlock-free.
+
+In summary, we have been able to deliver what we promised for the checkpoint. In fact, we're ahead of what we anticipated since we've also completed the first version of our code for `MPI_Bcast` and `MPI_Gather`. These remain to be tested rigorously for correctness. After that is done, our next goals, broadly, will be detailed benchmarking on GHC and PSC. The data we collect will help us understand the bottlenecks in our implementation and achieve superior performance. A more detailed schedule for the coming week follows - 
+
+
+| Week | Task | Assignee |
+| :-: | :-: | :-: |
+|  Week of 04/10 | Finish collective commmunication primitives | Karthik|
+|  Week of 04/10 | Correctness evaluation, benchmarking and comparison with MPI | Aditya|
+
+* Week of 04/10 - MPI_Bcast and MPI_Gather correctness evaluation          - Karthik
+                - Benchmarking code,  comparison with MPI and performance analysis      - Aditya
+
+* Week of 04/17 - MPI_Reduce (tree-based)               - Karthik
+                - MPI_Scatter, MPI_Reduce (ring-reduce) - Aditya
+
+* Week of 04/24 - Project demo code, code-clean up, pending bug-fixes - Karthik
+                - BenchmarkProject report with performance analysis   - Aditya
+
+Our preliminary results are basically our working code for synchronous message passing. After the project is cloned, run `make` and then our code can be invoked using the command `mpirun -n 8 -e ./helloworld` to see message-passing in action. 
+
+Our major concerns are about getting comparable performance for parallel programs written using our library to that achieved using MPI. We are confident of achieving our 100% milestone by this week - of correct and performant implementations of `MPI_Bcast` and `MPI_Gather`. We are also bullish on achieving the 125% milestone of writing performant implementations of collective communication and comparing communication topologies (tree-based versus ring-based) for `MPI_Reduce`.
+
+Our poster session will consist of a demonstration on PSC with 64 or 128 cores. We will choose a suitable computation-heavy parallel load such that both sequential and parallel versions finish and the speed-up with the parallel version is clearly seen.
