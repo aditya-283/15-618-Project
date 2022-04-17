@@ -3,15 +3,18 @@ CXX = g++ -m64 -std=c++11
 CXXFLAGS = -pthread -I. -O3 -Wall
 
 # Run all executables
-all: mpirun output
+all: mpirun output average
 .PHONY : all
 
 # Executables
 mpirun : mpirun.o mpi.o socket.o rio.o
 	$(CXX) $(CXXFLAGS) mpirun.o mpi.o socket.o rio.o -o mpirun
 
-output : average.o mpi.o socket.o rio.o
-	$(CXX) $(CXXFLAGS) average.o mpi.o socket.o rio.o -o output
+output : helloworld.o mpi.o socket.o rio.o
+	$(CXX) $(CXXFLAGS) helloworld.o mpi.o socket.o rio.o -o output
+
+average : average.o mpi.o socket.o rio.o
+	$(CXX) $(CXXFLAGS) average.o mpi.o socket.o rio.o -o average
 
 # Object Files
 mpirun.o : mpirun.cpp 
@@ -26,10 +29,13 @@ rio.o : rio.cpp
 socket.o : socket.cpp
 	$(CXX) $(CXXFLAGS) -c socket.cpp
 
+helloworld.o : helloworld.cpp
+	$(CXX) $(CXXFLAGS) -c helloworld.cpp 
+
 average.o : average.cpp
 	$(CXX) $(CXXFLAGS) -c average.cpp 
 
 
 clean : 
-	rm -rf *.o output mpirun
+	rm -rf *.o output average mpirun
 .PHONY : clean
