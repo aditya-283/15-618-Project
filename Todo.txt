@@ -6,3 +6,7 @@
 6. Citation from 18-613/15-213
 7. MPI_Gather function needs to be modified (Read Comments)
 8. Benchmarking - what to measure apart from speedup? e.g. any resource overheads?
+9. Signal handlers - close file descriptors, quit gracefully
+10. Why does bash return when running wireroute with -n 1, and not wait?
+11. connect failures, running out of fds?
+12. Allgather implementation using sends, receives

@@ -562,7 +562,7 @@ int main(int argc, char* argv[]) {
     typedef std::chrono::high_resolution_clock Clock;
     typedef std::chrono::duration<double> dsec;
 
-    char fileName[100] = "examples/inputs/easy_1024.txt";
+    char fileName[100] = "examples/inputs/medium_1024.txt";
     readInputFile(fileName);
     auto initStart = Clock::now();
     compute(procId, nProc, 0.1, 5);

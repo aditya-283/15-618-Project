@@ -6,7 +6,7 @@
 #include <chrono>
 
 #define ROOT_PROC       0
-#define ARRAY_SIZE      1000000
+#define ARRAY_SIZE      1000000000
 
 int main(int argc, char* argv[]) {
     int nProc=0, procId=0;
