@@ -69,13 +69,13 @@ int MPI_Init(int *argc, char*** argv) {
     return 0;
 }
 
-int MPI_Comm_rank(int* procId) {
-    *procId = processId;
+int MPI_Comm_rank(MPI_Comm comm, int* rank) {
+    *rank = processId;
     return 0;
 }
 
-int MPI_Comm_size(int* numProc) {
-    *numProc = numProcess;
+int MPI_Comm_size(MPI_Comm comm, int* size) {
+    *size = numProcess;
     return 0;
 }
 
@@ -90,7 +90,7 @@ int MPI_Finalize(void) {
     return 0;
 }
 
-int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest) {
+int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
     int destFd = -1;
     char destPortStr[10];
     ssize_t bytes_transacted = 0;
@@ -113,7 +113,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest) {
     return 0;
 }
 
-int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status *status) {
+int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status) {
     socklen_t clientlen;
     int sourceFd = -1;
     rio_t sourceRio;
@@ -139,15 +139,14 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, MPI_Status
     return 0;
 }
 
-static void *sendBcastData(void *varg)
-{
+static void *sendBcastData(void *varg) {
     threadArgs_t *threadArg = (threadArgs_t *) varg;
-    MPI_Send(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc);
+    MPI_Send(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, 0, MPI_COMM_WORLD);
     free(threadArg);
     return 0;
 }
 
-int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root) {
+int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
     if (processId == root) {
         // Send to all the processes
         pthread_t threadId[numProcess];
@@ -167,22 +166,21 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root) {
     } else {
         // Receive from root process
         MPI_Status status;
-        MPI_Recv(buf, count, datatype, root, &status);
+        MPI_Recv(buf, count, datatype, root, 0, MPI_COMM_WORLD, &status);
     }
     return 0;
 }
 
 
-void *recvGatherData(void *varg)
-{
+static void *recvGatherData(void *varg) {
     threadArgs_t *threadArg = (threadArgs_t *) varg;
     MPI_Status status;
-    MPI_Recv(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, &status);
+    MPI_Recv(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, 0, MPI_COMM_WORLD, &status);
     free(threadArg);
     return 0;
 }
 
-int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root) {
+int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
     if (processId == root) {
         // Receive data from other processes
         pthread_t threadId[numProcess];
@@ -205,7 +203,13 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
         }
     } else {
         // Send data to root process
-        MPI_Send(sendbuf, sendcount, sendtype, root);
+        MPI_Send(sendbuf, sendcount, sendtype, root, 0, MPI_COMM_WORLD);
     }
+    return 0;
+}
+
+int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
+    MPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, 0, comm);
+    MPI_Bcast(recvbuf, recvcount * numProcess, recvtype, 0, comm);
     return 0;
 }

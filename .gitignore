@@ -30,3 +30,6 @@ mpirun
 output
 average
 serialAverage
+
+examples/costs/**
+examples/outputs/**

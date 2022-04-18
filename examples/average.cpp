@@ -12,8 +12,8 @@ int main(int argc, char* argv[]) {
     int nProc=0, procId=0;
     
     MPI_Init(&argc, &argv);
-    MPI_Comm_rank(&procId);
-    MPI_Comm_size(&nProc);
+    MPI_Comm_rank(MPI_COMM_WORLD, &procId);
+    MPI_Comm_size(MPI_COMM_WORLD, &nProc);
     
     using namespace std::chrono;
     typedef std::chrono::high_resolution_clock Clock;
@@ -34,14 +34,14 @@ int main(int argc, char* argv[]) {
     double localAvg = (double) sum / chunkSize;
 
     if (procId != ROOT_PROC) {
-        MPI_Send(&localAvg, 1, MPI_DOUBLE, ROOT_PROC);
+        MPI_Send(&localAvg, 1, MPI_DOUBLE, ROOT_PROC, 0, MPI_COMM_WORLD);
     } else {
         double *avgArray = (double *) malloc(sizeof(double) * nProc);
         avgArray[ROOT_PROC] = localAvg;
         MPI_Status status;
         for (int sourceProc = 0; sourceProc < nProc; sourceProc ++) {
             if (sourceProc == ROOT_PROC) continue;
-            MPI_Recv(&avgArray[sourceProc], 1, MPI_DOUBLE, sourceProc, &status);
+            MPI_Recv(&avgArray[sourceProc], 1, MPI_DOUBLE, sourceProc, 0, MPI_COMM_WORLD, &status);
         }
 
         double finalAvg = 0;

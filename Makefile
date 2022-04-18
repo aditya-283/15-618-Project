@@ -3,7 +3,7 @@ CXX = g++ -m64 -std=c++11
 CXXFLAGS = -pthread -I. -O3 -Wall
 
 # Run all executables
-all: mpirun output average serialAverage
+all: mpirun output wireroute 
 .PHONY : all
 
 # Executables
@@ -19,6 +19,9 @@ average : average.o mpi.o socket.o rio.o
 serialAverage : serialAverage.o 
 	$(CXX) $(CXXFLAGS) serialAverage.o  -o serialAverage
 
+wireroute : wireroute.o mpi.o socket.o rio.o
+	$(CXX) $(CXXFLAGS) wireroute.o mpi.o socket.o rio.o -o wireroute
+
 # Object Files
 mpirun.o : mpirun.cpp 
 	$(CXX) $(CXXFLAGS) -c mpirun.cpp 
@@ -32,15 +35,19 @@ rio.o : rio.cpp
 socket.o : socket.cpp
 	$(CXX) $(CXXFLAGS) -c socket.cpp
 
-helloworld.o : helloworld.cpp
-	$(CXX) $(CXXFLAGS) -c helloworld.cpp 
+helloworld.o : examples/helloworld.cpp
+	$(CXX) $(CXXFLAGS) -c examples/helloworld.cpp 
 
-average.o : average.cpp
-	$(CXX) $(CXXFLAGS) -c average.cpp 
+average.o : examples/average.cpp
+	$(CXX) $(CXXFLAGS) -c examples/average.cpp 
 
-serialAverage.o : serialAverage.cpp
-	$(CXX) $(CXXFLAGS) -c serialAverage.cpp 
+serialAverage.o : examples/serialAverage.cpp
+	$(CXX) $(CXXFLAGS) -c examples/serialAverage.cpp 
+
+wireroute.o: examples/wireroute.cpp
+	$(CXX) $(CXXFLAGS) -c examples/wireroute.cpp 
+
 
 clean : 
-	rm -rf *.o output average mpirun serialAverage
+	rm -rf *.o output average mpirun serialAverage wireroute examples/outputs/** examples/costs/**
 .PHONY : clean
