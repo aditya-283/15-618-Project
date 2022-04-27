@@ -1,5 +1,5 @@
-#include "wireroute.h"
-#include "mpi.h"
+#include "headers/wireroute.h"
+#include "headers/mpi.h"
 #include <assert.h>
 #include <cstdio>
 #include <cstdlib>
@@ -72,7 +72,8 @@ void writeCostFile(char *inputFilename)
     char costFileName[100], fileName[100];
     char *token = NULL, *nextToken = NULL;
 
-    mkdir("costs", 0777);
+    mkdir("./WireRoute", 0777);
+    mkdir("./WireRoute/costs", 0777);
 
     strcpy(fileName, inputFilename);
     nextToken = token = strtok(fileName, "/");
@@ -81,7 +82,7 @@ void writeCostFile(char *inputFilename)
         token = nextToken;
     }
     token = strtok(token, ".");
-    sprintf(costFileName, "./examples/costs/costs_%s_%d.txt", token, numProcs);
+    sprintf(costFileName, "./WireRoute/costs/costs_%s_%d.txt", token, numProcs);
     FILE *cost_file = fopen(costFileName, "w");
 
     // Write to file
@@ -138,7 +139,8 @@ void writeOutputFile(char *inputFilename)
     char ouputFileName[100], fileName[100];
     char *token = NULL, *nextToken = NULL;
 
-    mkdir("outputs", 0777);
+    mkdir("./WireRoute", 0777);
+    mkdir("./WireRoute/outputs", 0777);
 
     strcpy(fileName, inputFilename);
     nextToken = token = strtok(fileName, "/");
@@ -147,7 +149,7 @@ void writeOutputFile(char *inputFilename)
         token = nextToken;
     }
     token = strtok(token, ".");
-    sprintf(ouputFileName, "./examples/outputs/output_%s_%d.txt", token, numProcs);
+    sprintf(ouputFileName, "./WireRoute/outputs/output_%s_%d.txt", token, numProcs);
 
     FILE *output_file = fopen(ouputFileName, "w");
     fprintf(output_file, "%d %d\n", dimY, dimX);

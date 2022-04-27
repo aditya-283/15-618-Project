@@ -1,6 +1,6 @@
 /* Imported from 18-613: Foundations of Computer Systems (Lab-7 Proxy Lab) */
 
-#include "socket.h"
+#include "headers/socket.h"
 #include <errno.h>      /* errno */
 #include <netdb.h>      /* freeaddrinfo() */
 #include <stdio.h>      /* stderr */

@@ -1,6 +1,6 @@
-#include "mpi.h"
-#include "socket.h"
-#include "rio.h"
+#include "headers/mpi.h"
+#include "headers/socket.h"
+#include "headers/rio.h"
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>

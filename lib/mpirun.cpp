@@ -1,7 +1,6 @@
+#include "headers/socket.h"
 #include <cstdio>
 #include <cstdlib>
-#include "mpi.h"
-#include "socket.h"
 #include <unistd.h>
 
 

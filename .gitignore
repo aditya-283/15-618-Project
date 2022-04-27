@@ -30,6 +30,9 @@ mpirun
 output
 average
 serialAverage
+wireroute
+
+./objs
 
 examples/costs/**
 examples/outputs/**

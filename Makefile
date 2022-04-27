@@ -1,53 +1,58 @@
+# Makefile to compile all the source files of the MPI C++ Library
 
-CXX = g++ -m64 -std=c++11
-CXXFLAGS = -pthread -I. -O3 -Wall
+# Directories
+SRCDIR := src
+LIBDIR := lib
+OBJDIR := objs
 
-# Run all executables
-all: mpirun output wireroute 
-.PHONY : all
+# MPI Object Files
+LIBOBJ := $(OBJDIR)/mpi.o $(OBJDIR)/socket.o $(OBJDIR)/rio.o
 
 # Executables
-mpirun : mpirun.o mpi.o socket.o rio.o
-	$(CXX) $(CXXFLAGS) mpirun.o mpi.o socket.o rio.o -o mpirun
+EXECUTABLES := mpirun helloworld average serialAverage wireroute
 
-output : helloworld.o mpi.o socket.o rio.o
-	$(CXX) $(CXXFLAGS) helloworld.o mpi.o socket.o rio.o -o output
+# Compiler
+CXX := g++ -m64 -std=c++11
+CXXFLAGS := -pthread -I. -O3 -Wall
 
-average : average.o mpi.o socket.o rio.o
-	$(CXX) $(CXXFLAGS) average.o mpi.o socket.o rio.o -o average
+.PHONY : all clean dirs
 
-serialAverage : serialAverage.o 
-	$(CXX) $(CXXFLAGS) serialAverage.o  -o serialAverage
+default : dirs mpirun $(EXECUTABLES)
 
-wireroute : wireroute.o mpi.o socket.o rio.o
-	$(CXX) $(CXXFLAGS) wireroute.o mpi.o socket.o rio.o -o wireroute
+# Executables
+.SECONDEXPANSION:
+$(EXECUTABLES) : $$(patsubst %,$(OBJDIR)/%.o,$$@) $(LIBOBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-# Object Files
-mpirun.o : mpirun.cpp 
-	$(CXX) $(CXXFLAGS) -c mpirun.cpp 
+# Library Object Files
+$(OBJDIR)/%.o : $(LIBDIR)/%.cpp
+	$(CXX) $(CXXFLAGS) $< -c -o $@
 
-mpi.o : mpi.cpp
-	$(CXX) $(CXXFLAGS) -c mpi.cpp 
-
-rio.o : rio.cpp
-	$(CXX) $(CXXFLAGS) -c rio.cpp 
-
-socket.o : socket.cpp
-	$(CXX) $(CXXFLAGS) -c socket.cpp
-
-helloworld.o : examples/helloworld.cpp
-	$(CXX) $(CXXFLAGS) -c examples/helloworld.cpp 
-
-average.o : examples/average.cpp
-	$(CXX) $(CXXFLAGS) -c examples/average.cpp 
-
-serialAverage.o : examples/serialAverage.cpp
-	$(CXX) $(CXXFLAGS) -c examples/serialAverage.cpp 
-
-wireroute.o: examples/wireroute.cpp
-	$(CXX) $(CXXFLAGS) -c examples/wireroute.cpp 
+# Application Code Objects
+$(OBJDIR)/%.o : $(SRCDIR)/%.cpp
+	$(CXX) $< $(CXXFLAGS) -c -o $@
 
 
-clean : 
-	rm -rf *.o output average mpirun serialAverage wireroute examples/outputs/** examples/costs/**
-.PHONY : clean
+dirs :
+	mkdir -p $(OBJDIR)/
+
+clean:
+	rm -rf $(OBJDIR) $(EXECUTABLES) WireRoute/costs WireRoute/outputs
+
+
+
+# Makefile Help:
+#
+# Make Format:
+# target: prerequisite
+# 	recipe
+#
+# Make arguments Help:
+# $@ - Represents Target 
+# $< - First prerequisite
+# $? - All prerequisite that are newer
+# $^ - All the prerequisites
+#
+# Assignments
+# := - Static Assignment
+#  = - Dynamic (Recursive) Assignment

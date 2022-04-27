@@ -1,6 +1,6 @@
+#include "headers/mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "mpi.h"
 #include <unistd.h>
 #include <string.h>
 #include <chrono>
