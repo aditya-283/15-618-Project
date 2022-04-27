@@ -9,7 +9,7 @@ OBJDIR := objs
 LIBOBJ := $(OBJDIR)/mpi.o $(OBJDIR)/socket.o $(OBJDIR)/rio.o
 
 # Executables
-EXECUTABLES := mpirun helloworld average serialAverage wireroute
+EXECUTABLES := mpirun helloworld.exe average.exe serialAverage.exe wireroute.exe
 
 # Compiler
 CXX := g++ -m64 -std=c++11
@@ -21,7 +21,7 @@ default : dirs mpirun $(EXECUTABLES)
 
 # Executables
 .SECONDEXPANSION:
-$(EXECUTABLES) : $$(patsubst %,$(OBJDIR)/%.o,$$@) $(LIBOBJ)
+$(EXECUTABLES) : $$(patsubst %.exe,$(OBJDIR)/%.o,$$@) $(LIBOBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 # Library Object Files
