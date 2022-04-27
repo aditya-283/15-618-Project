@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "mpi.h"
+#include "socket.h"
 #include <unistd.h>
 
 
@@ -62,8 +63,17 @@ void spawnProcesses(int numProc, int argc, char**argv, char* executable, int* po
 
 int* findPortIds(int numProc) {
     int* portIds = (int*) malloc(numProc * numProc * sizeof(int));
+    int testPort = LISTEN_PORT_OFFSET;
+    char portString[10];
+
     for (int i=0; i<numProc * numProc; i++) {
-        portIds[i] = 3000 + i;
+        int fd = -1;
+        getPortStr(testPort, portString, 10);
+        while ((fd = open_listenfd(portString)) < 0) {
+            testPort ++;
+        }
+        close(fd);
+        portIds[i] =  testPort ++;
     }
     return portIds;
 }

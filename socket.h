@@ -9,5 +9,6 @@
 /* Reentrant protocol-independent client/server helpers */
 int open_clientfd(const char *hostname, const char *port);
 int open_listenfd(const char *port);
+void getPortStr(int portId, char* listenPortStr, int size);
 
 #endif /* SOCKET_H */
