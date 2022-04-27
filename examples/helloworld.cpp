@@ -4,8 +4,8 @@
 #include <unistd.h>
 #include <string.h>
 
-#define SYNC_SEND_RECEIVE   1
-#define BROADCAST           0
+#define SYNC_SEND_RECEIVE   0
+#define BROADCAST           1
 #define GATHER              0
 #define ALLGATHER           0
 
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
     memset(buffer, 0, nProc * sizeof(int));
     int data = 1000 + procId;
     MPI_Allgather(&data, 1, MPI_INT, buffer, 1, MPI_INT, MPI_COMM_WORLD);
-    if (procId == 5) {
+    if (procId == nProc - 1) {
         printf("Process %d: ", procId);
         for (int i = 0; i < nProc; i ++){
             printf("%d ", buffer[i]);

@@ -13,50 +13,55 @@ static void printUsage(void) {
 
 
 
-void modifyArg(int argc, char** argv, char** new_argv, int numProc, int* portIds, char buf[][10]) {
-    for (int j=0; j<argc + numProc*numProc; j++) {
-        if (j < argc) {
-            new_argv[j] = argv[j];
-        } else {
-            snprintf(buf[j], 10, "%d", portIds[(j - argc)]);
-            new_argv[j] = buf[j];
-        }
+void modifyArg(int argc, char** argv, char** new_argv, int procId, int numProc, int* portIds, char buf[][10]) {    
+    int j = 0;
+    // Copy existing argv
+    for (j = 0; j < argc; j ++) {
+        new_argv[j] = argv[j];
+    }
+    // Copy current process listen ports
+    for (; j < (argc + numProc); j ++) {
+        snprintf(buf[j - argc], 10, "%d", portIds[(procId * numProc) + (j - argc)]);
+        new_argv[j] = buf[j - argc];
+    }
+    // Copy write ports
+    int portOffset = procId;
+    for (; j < (argc + 2 * numProc); j ++, portOffset += numProc) {
+        snprintf(buf[j - argc], 10, "%d", portIds[portOffset]);
+        new_argv[j] = buf[j - argc];
     }
 
-    
-    snprintf(buf[argc + numProc*numProc], 10, "%d", numProc);
-    new_argv[argc + numProc] = buf[argc + numProc + 1];
+    snprintf(buf[2 * numProc], 10, "%d", procId);
+    new_argv[j++] = buf[2 * numProc];
+
+    snprintf(buf[2 * numProc + 1], 10, "%d", numProc);
+    new_argv[j++] = buf[2 * numProc + 1];
 }
 
 
 void spawnProcesses(int numProc, int argc, char**argv, char* executable, int* portIds) {
-    char** new_argv = (char**)malloc((argc + numProc*numProc + 2) * sizeof(char*));
-    char buf[numProc*numProc+2][10];
-    modifyArg(argc, argv, new_argv, numProc, portIds, buf);
-    for (int i=0; i<numProc; i++) {
+    char buf[(2 * numProc) + 2][10];
+    char** new_argv = (char**) malloc((argc + (2 * numProc) + 3) * sizeof(char*));
+
+    for (int procId = 0; procId < numProc; procId ++) {
         int pid = fork();
         if (pid == 0) {
             // parent
-            snprintf(buf[argc + numProc*numProc+1], 10, "%d", i);
-            new_argv[argc+numProc*numProc+1] = buf[argc+numProc];
+            modifyArg(argc, argv, new_argv, procId, numProc, portIds, buf);
             execve(executable, new_argv, NULL);
-            break;
         } else {
             // child
-            if (i == numProc - 2) {
-                snprintf(buf[argc + numProc*numProc + 1], 10, "%d", i + 1);
-                new_argv[argc + numProc*numProc + 1] = buf[argc+numProc];
+            if (procId == numProc - 2) {
+                modifyArg(argc, argv, new_argv, procId + 1, numProc, portIds, buf);
                 execve(executable, new_argv, NULL);
-                break;
-            }   
+            }
         }
     }
 }
 
 
-   
 int* findPortIds(int numProc) {
-    int* portIds = (int*)malloc(numProc * numProc * sizeof(int));
+    int* portIds = (int*) malloc(numProc * numProc * sizeof(int));
     for (int i=0; i<numProc * numProc; i++) {
         portIds[i] = 3000 + i;
     }

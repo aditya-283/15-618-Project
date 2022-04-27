@@ -37,25 +37,29 @@ typedef struct {
     void *buf;
 } threadArgs_t;
 
-static int numProc;
-static int procId;
+static int numProc, procId;
 static int *listenfd;
-static char** listenPortStrings;
+static char **listenPortStrings, **writePortStrings;
 static struct sockaddr_storage clientaddr;
 
 int MPI_Init(int *argc, char*** argv) {
     numProc = atoi((*argv)[--(*argc)]);
     procId = atoi((*argv)[--(*argc)]);
-    listenPortStrings = (char**)malloc(numProc * sizeof(char*));
 
+    listenPortStrings = (char**) malloc(numProc * sizeof(char*));
     for (int i = 0; i < numProc; i++) {
-        listenPortStrings[i] = (*argv)[*argc - numProc + i];
+        listenPortStrings[i] = (*argv)[*argc - 2 * numProc + i];
     }
 
-    *argc = *argc - numProc - 4;
+    writePortStrings = (char **) malloc(numProc * sizeof(char*));
+    for (int i = 0; i < numProc; i++) {
+        writePortStrings[i] = (*argv)[*argc - numProc + i];
+    }    
+
+    *argc = *argc - 2 * numProc - 4;
     *argv = *argv + 4;
 
-    listenfd = (int*)malloc(sizeof(int) * numProc);
+    listenfd = (int*) malloc(sizeof(int) * numProc);
     for (int index = 0; index < numProc; index ++) {
         if (index == procId) continue;
         listenfd[index] = open_listenfd(listenPortStrings[index]);
@@ -94,7 +98,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
     
     // Open Connection with the destination process
     while (destFd < 0) {
-        destFd = open_clientfd("localhost", listenPortStrings[dest]);
+        destFd = open_clientfd("localhost", writePortStrings[dest]);
     }
 
     // Send the data to the destination process
