@@ -138,3 +138,7 @@ int open_listenfd(const char *port)
     }
     return listenfd;
 }
+
+void getPortStr(int portId, char* listenPortStr, int size) {
+    snprintf(listenPortStr, size, "%d", portId);
+}

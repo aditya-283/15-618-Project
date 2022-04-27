@@ -17,14 +17,14 @@
 
 #define printError(funcName, ...);                                      \
         if (PRINT_ERRORS) {                                             \
-            printf("MPI.CPP  Process %d: Error in %s() - ", processId, funcName);\
+            printf("MPI.CPP  Process %d: Error in %s() - ", procId, funcName);\
             printf(__VA_ARGS__);                                        \
             printf("\n");                                               \
         }
 
 #define printMessage(...);                                              \
         if (PRINT_MESSAGES) {                                           \
-            printf("MPI.CPP  Process %d: ", processId);                 \
+            printf("MPI.CPP  Process %d: ", procId);                 \
             printf(__VA_ARGS__);                                        \
             printf("\n");                                               \
         }
@@ -37,30 +37,32 @@ typedef struct {
     void *buf;
 } threadArgs_t;
 
-static int numProcess;
-static int processId;
+static int numProc, procId;
 static int *listenfd;
+static char **listenPortStrings, **writePortStrings;
 static struct sockaddr_storage clientaddr;
 
-static inline int getPortId (int procId, int portOffset) {
-    return LISTEN_PORT_OFFSET + (numProcess * procId) + portOffset;
-}
-
-static inline void getPortStr(int procId, int portOffset, char* listenPortStr, int size) {
-    snprintf(listenPortStr, size, "%d", getPortId(procId, portOffset));
-}
-
 int MPI_Init(int *argc, char*** argv) {
-    numProcess = atoi(*argv[0]);
-    processId = atoi((*argv)[1]);
-    *argc = *argc - 2;
-    *argv = *argv + 2;
+    numProc = atoi((*argv)[--(*argc)]);
+    procId = atoi((*argv)[--(*argc)]);
 
-    char listenPortStr[10];
-    listenfd = (int *) malloc(sizeof(int) * numProcess);
-    for (int index = 0; index < numProcess; index ++) {
-        getPortStr(processId, index, listenPortStr, 10);
-        listenfd[index] = open_listenfd(listenPortStr);
+    listenPortStrings = (char**) malloc(numProc * sizeof(char*));
+    for (int i = 0; i < numProc; i++) {
+        listenPortStrings[i] = (*argv)[*argc - 2 * numProc + i];
+    }
+
+    writePortStrings = (char **) malloc(numProc * sizeof(char*));
+    for (int i = 0; i < numProc; i++) {
+        writePortStrings[i] = (*argv)[*argc - numProc + i];
+    }    
+
+    *argc = *argc - 2 * numProc - 4;
+    *argv = *argv + 4;
+
+    listenfd = (int*) malloc(sizeof(int) * numProc);
+    for (int index = 0; index < numProc; index ++) {
+        if (index == procId) continue;
+        listenfd[index] = open_listenfd(listenPortStrings[index]);
         if (listenfd[index] < 0) {
             printError("MPI_Init", "open_listenfd: FD %d returned %d with errno %d", index, listenfd[index], errno);
             return -1;
@@ -70,17 +72,17 @@ int MPI_Init(int *argc, char*** argv) {
 }
 
 int MPI_Comm_rank(MPI_Comm comm, int* rank) {
-    *rank = processId;
+    *rank = procId;
     return 0;
 }
 
 int MPI_Comm_size(MPI_Comm comm, int* size) {
-    *size = numProcess;
+    *size = numProc;
     return 0;
 }
 
 int MPI_Finalize(void) {
-    for (int index = 0; index < numProcess; index ++) {
+    for (int index = 0; index < numProc; index ++) {
         if (close(listenfd[index])) {
             printError("MPI_Finalize", "Unable to close listenfd %d.", index);
         }
@@ -92,13 +94,11 @@ int MPI_Finalize(void) {
 
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
     int destFd = -1;
-    char destPortStr[10];
     ssize_t bytes_transacted = 0;
     
     // Open Connection with the destination process
-    getPortStr(dest, processId, destPortStr, 10);
     while (destFd < 0) {
-        destFd = open_clientfd("localhost", destPortStr);
+        destFd = open_clientfd("localhost", writePortStrings[dest]);
     }
 
     // Send the data to the destination process
@@ -147,10 +147,10 @@ static void *sendBcastData(void *varg) {
 }
 
 int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
-    if (processId == root) {
+    if (procId == root) {
         // Send to all the processes
-        pthread_t threadId[numProcess];
-        for (int destProc = 0; destProc < numProcess; destProc ++) {
+        pthread_t threadId[numProc];
+        for (int destProc = 0; destProc < numProc; destProc ++) {
             if (destProc == root) continue;
             threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
             threadArg->proc = destProc;
@@ -159,7 +159,7 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm co
             threadArg->buf = buf;
             pthread_create(&threadId[destProc], NULL, sendBcastData, (void *) threadArg);
         }
-        for (int i = 0; i < numProcess; i ++) {
+        for (int i = 0; i < numProc; i ++) {
             if (i == root) continue;
             pthread_join(threadId[i], NULL);
         }
@@ -181,10 +181,10 @@ static void *recvGatherData(void *varg) {
 }
 
 int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
-    if (processId == root) {
+    if (procId == root) {
         // Receive data from other processes
-        pthread_t threadId[numProcess];
-        for (int sourceProc = 0; sourceProc < numProcess; sourceProc ++) {
+        pthread_t threadId[numProc];
+        for (int sourceProc = 0; sourceProc < numProc; sourceProc ++) {
             if (sourceProc == root) continue;
             threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
             threadArg->proc = sourceProc;
@@ -193,11 +193,10 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
             threadArg->buf = (void*) ((char *) recvbuf + (recvcount * recvtype * sourceProc));
             pthread_create(&threadId[sourceProc], NULL, recvGatherData, (void *) threadArg);
         }
-        // Could still do this memcpy in another separate thread
         void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype * root));
         memcpy(destBuf, sendbuf, sendcount * sendtype);
 
-        for (int i = 0; i < numProcess; i ++) {
+        for (int i = 0; i < numProc; i ++) {
             if (i == root) continue;
             pthread_join(threadId[i], NULL);
         }
@@ -208,8 +207,9 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
     return 0;
 }
 
+
 int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
     MPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, 0, comm);
-    MPI_Bcast(recvbuf, recvcount * numProcess, recvtype, 0, comm);
+    MPI_Bcast(recvbuf, recvcount * numProc, recvtype, 0, comm);
     return 0;
 }
