@@ -27,7 +27,7 @@
 
 # Custom Executable
 mpirun
-*.exe
+./exe
 
 ./objs
 

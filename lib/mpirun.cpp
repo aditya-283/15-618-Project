@@ -31,9 +31,11 @@ void modifyArg(int argc, char** argv, char** new_argv, int procId, int numProc, 
         new_argv[j] = buf[j - argc];
     }
 
+    // Process ID
     snprintf(buf[2 * numProc], 10, "%d", procId);
     new_argv[j++] = buf[2 * numProc];
 
+    // Number of Process
     snprintf(buf[2 * numProc + 1], 10, "%d", numProc);
     new_argv[j++] = buf[2 * numProc + 1];
 }
@@ -104,7 +106,12 @@ int main(int argc, char* argv[]) {
     // Print Usage Message if arguments are incorrect
     if ((optind < 5) || !(nArgPresent && eArgPresent)) {
         printUsage();
-        return 0;
+        return -1;
+    }
+
+    if (access(executable, F_OK | X_OK)) {
+        printf("mpirun: %s either does not exist or not an executable!\n", executable);
+        return -1;
     }
 
     int* portIds = findPortIds(numProc);

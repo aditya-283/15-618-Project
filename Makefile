@@ -4,12 +4,13 @@
 SRCDIR := src
 LIBDIR := lib
 OBJDIR := objs
+EXEDIR := exe
 
 # MPI Object Files
 LIBOBJ := $(OBJDIR)/mpi.o $(OBJDIR)/socket.o $(OBJDIR)/rio.o
 
 # Executables
-EXECUTABLES := mpirun helloworld.exe average.exe serialAverage.exe wireroute.exe
+EXECUTABLES := mpirun helloworld average serialAverage wireroute
 
 # Compiler
 CXX := g++ -m64 -std=c++11
@@ -21,8 +22,8 @@ default : dirs mpirun $(EXECUTABLES)
 
 # Executables
 .SECONDEXPANSION:
-$(EXECUTABLES) : $$(patsubst %.exe,$(OBJDIR)/%.o,$$@) $(LIBOBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+$(EXECUTABLES) : $$(patsubst %,$(OBJDIR)/%.o,$$@) $(LIBOBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(EXEDIR)/$@
 
 # Library Object Files
 $(OBJDIR)/%.o : $(LIBDIR)/%.cpp
@@ -34,10 +35,10 @@ $(OBJDIR)/%.o : $(SRCDIR)/%.cpp
 
 
 dirs :
-	mkdir -p $(OBJDIR)/
+	mkdir -p $(OBJDIR)/ $(EXEDIR)/
 
 clean:
-	rm -rf $(OBJDIR) $(EXECUTABLES) WireRoute/costs WireRoute/outputs
+	rm -rf $(OBJDIR) $(EXEDIR) mpirun WireRoute/costs WireRoute/outputs
 
 
 
