@@ -25,11 +25,11 @@
 *.out
 *.app
 
-# Custom Executable
+# Custom Executables and Object files folders
 mpirun
-./exe
+exec
+objs
 
-./objs
-
+# WireRoute output files
 examples/costs/**
 examples/outputs/**

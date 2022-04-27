@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define SYNC_SEND_RECEIVE   0
-#define BROADCAST           1
+#define BROADCAST           0
 #define GATHER              0
 #define ALLGATHER           0
 
