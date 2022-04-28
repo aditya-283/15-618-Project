@@ -79,6 +79,13 @@ int* findPortIds(int numProc) {
         getPortStr(testPort, portString, 10);
         while ((fd = open_listenfd(portString)) < 0) {
             testPort ++;
+            if (testPort > 65535) {
+                testPort = 0;
+            }
+            if (testPort == LISTEN_PORT_OFFSET) {
+                free(portIds);
+                return NULL;
+            }
         }
         close(fd);
         portIds[i] =  testPort ++;
@@ -128,7 +135,11 @@ int main(int argc, char* argv[]) {
     }
 
     // Get valid port IDs for inter-process communication
-    int* portIds = findPortIds(numProc);
+    int* portIds = NULL;
+    if ((portIds= findPortIds(numProc)) == NULL) {
+        printf("mpirun: Error Acquiring Ports.\n");
+        return -1;
+    }
     // Spawn the processes
     spawnProcesses(numProc, argc - 4, argv + 4, executable, portIds);
 
