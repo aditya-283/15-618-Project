@@ -31,5 +31,4 @@ exec
 objs
 
 # WireRoute output files
-examples/costs/**
-examples/outputs/**
+WireRoute

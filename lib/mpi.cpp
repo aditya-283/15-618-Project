@@ -12,6 +12,7 @@
 #include <string.h>
 #include <pthread.h>
 
+#define PARENT_PROCESS  (numProc - 1)
 #define PRINT_ERRORS 1
 #define PRINT_MESSAGES 1
 
@@ -87,8 +88,13 @@ int MPI_Finalize(void) {
             printError("MPI_Finalize", "Unable to close listenfd %d.", index);
         }
     }
-    // Sync with all process somehow
-    // exit(0);
+
+    // Wait for all child process to reap
+    if (procId == PARENT_PROCESS) {
+        for (int proc = 0 ; proc < numProc-1; proc ++) {
+            wait(NULL);
+        }
+    }
     return 0;
 }
 
@@ -124,7 +130,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     clientlen = sizeof(struct sockaddr_storage);
     sourceFd = accept(listenfd[source], (struct sockaddr*)&clientaddr, &clientlen);
     if (sourceFd < 0) {
-        printError("MPI_Recv", "Accept Failed.");
+        printError("MPI_Recv", "Accept Failed connecting to Process %d", source);
         return -1;
     }
     
@@ -221,8 +227,7 @@ int MPI_Scatter(void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvb
             threadArg->buf = (void *) ((char *) sendbuf + (sendcount * sendtype * destProc));
             pthread_create(&threadId[destProc], NULL, rootSendData, (void *) threadArg);
         }
-        void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype * root));
-        memcpy(destBuf, sendbuf, sendcount * sendtype);
+        memcpy(recvbuf, sendbuf, sendcount * sendtype);
 
         for (int i = 0; i < numProc; i ++) {
             if (i == root) continue;

@@ -42,7 +42,7 @@ dirs :
 	mkdir -p $(OBJDIR)/ $(EXEDIR)/
 
 clean:
-	rm -rf $(OBJDIR) $(EXEDIR) mpirun WireRoute/costs WireRoute/outputs
+	rm -rf $(OBJDIR) $(EXEDIR) mpirun WireRoute
 
 
 
