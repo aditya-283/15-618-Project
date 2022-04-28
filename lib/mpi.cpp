@@ -56,8 +56,7 @@ int MPI_Init(int *argc, char*** argv) {
         writePortStrings[i] = (*argv)[*argc - numProc + i];
     }    
 
-    *argc = *argc - 2 * numProc - 4;
-    *argv = *argv + 4;
+    *argc = *argc - 2 * numProc;
 
     listenfd = (int*) malloc(sizeof(int) * numProc);
     for (int index = 0; index < numProc; index ++) {
