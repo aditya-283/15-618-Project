@@ -29,6 +29,7 @@
             printf("\n");                                               \
         }
 
+#define min(a, b) {(a) < (b) ? (a) : (b)}
 
 typedef struct {
     int proc;
@@ -138,7 +139,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     return 0;
 }
 
-static void *sendBcastData(void *varg) {
+static void *rootSendData(void *varg) {
     threadArgs_t *threadArg = (threadArgs_t *) varg;
     MPI_Send(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, 0, MPI_COMM_WORLD);
     free(threadArg);
@@ -156,7 +157,7 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm co
             threadArg->count = count;
             threadArg->datatype = datatype;
             threadArg->buf = buf;
-            pthread_create(&threadId[destProc], NULL, sendBcastData, (void *) threadArg);
+            pthread_create(&threadId[destProc], NULL, rootSendData, (void *) threadArg);
         }
         for (int i = 0; i < numProc; i ++) {
             if (i == root) continue;
@@ -171,7 +172,7 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm co
 }
 
 
-static void *recvGatherData(void *varg) {
+static void *rootReceiveData(void *varg) {
     threadArgs_t *threadArg = (threadArgs_t *) varg;
     MPI_Status status;
     MPI_Recv(threadArg->buf, threadArg->count, threadArg->datatype, threadArg->proc, 0, MPI_COMM_WORLD, &status);
@@ -190,7 +191,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
             threadArg->count = recvcount;
             threadArg->datatype = recvtype;
             threadArg->buf = (void*) ((char *) recvbuf + (recvcount * recvtype * sourceProc));
-            pthread_create(&threadId[sourceProc], NULL, recvGatherData, (void *) threadArg);
+            pthread_create(&threadId[sourceProc], NULL, rootReceiveData, (void *) threadArg);
         }
         void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype * root));
         memcpy(destBuf, sendbuf, sendcount * sendtype);
@@ -202,6 +203,35 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
     } else {
         // Send data to root process
         MPI_Send(sendbuf, sendcount, sendtype, root, 0, MPI_COMM_WORLD);
+    }
+    return 0;
+}
+
+
+int MPI_Scatter(void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
+    if (procId == root) {
+        // Send to all the processes
+        pthread_t threadId[numProc];
+        for (int destProc = 0; destProc < numProc; destProc ++) {
+            if (destProc == root) continue;
+            threadArgs_t *threadArg = (threadArgs_t *) malloc(sizeof(threadArgs_t));
+            threadArg->proc = destProc;
+            threadArg->count = sendcount;
+            threadArg->datatype = sendtype;
+            threadArg->buf = (void *) ((char *) sendbuf + (sendcount * sendtype * destProc));
+            pthread_create(&threadId[destProc], NULL, rootSendData, (void *) threadArg);
+        }
+        void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype * root));
+        memcpy(destBuf, sendbuf, sendcount * sendtype);
+
+        for (int i = 0; i < numProc; i ++) {
+            if (i == root) continue;
+            pthread_join(threadId[i], NULL);
+        }
+    } else {
+        // Receive from root process
+        MPI_Status status;
+        MPI_Recv(recvbuf, recvcount, recvtype, root, 0, MPI_COMM_WORLD, &status);
     }
     return 0;
 }

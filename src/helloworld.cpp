@@ -7,6 +7,7 @@
 #define SYNC_SEND_RECEIVE   0
 #define BROADCAST           0
 #define GATHER              0
+#define SCATTER             1
 #define ALLGATHER           0
 
 #define ROOT_PROCESS        0
@@ -56,6 +57,31 @@ int main(int argc, char* argv[]) {
         printf("Process %d: Sending %d\n", procId, data);
         MPI_Gather(&data, 1, MPI_INT, NULL, 0, MPI_INT, ROOT_PROCESS, MPI_COMM_WORLD);
     }
+#elif SCATTER
+    int len = 10;
+    int recvBuffer[len];
+
+    if (procId == ROOT_PROCESS) {
+        int sendBuffer[len * nProc];
+        
+        printf("Root Process %d: ", procId);
+        for (int i = 0; i < len * nProc; i ++) {
+            sendBuffer[i] = 1000 + i;
+            printf("%d ", sendBuffer[i]);
+        }
+        printf("\n");
+
+        MPI_Scatter(sendBuffer, len, MPI_INT, recvBuffer, len, MPI_INT, ROOT_PROCESS, MPI_COMM_WORLD);
+    } else {
+        MPI_Scatter(NULL, 0, MPI_INT, recvBuffer, len, MPI_INT, ROOT_PROCESS, MPI_COMM_WORLD);
+    }
+
+    printf("Process %d: ", procId);
+    for(int i = 0; i < len; i ++) {
+        printf("%d ", recvBuffer[i]);
+    }
+    printf("\n");
+
 #elif ALLGATHER
     int buffer[nProc];
     memset(buffer, 0, nProc * sizeof(int));
