@@ -10,7 +10,7 @@ EXEDIR := exec
 LIBOBJ := $(OBJDIR)/mpi.o $(OBJDIR)/socket.o $(OBJDIR)/rio.o
 
 # Executables
-EXECUTABLES := helloworld average serialAverage wireroute
+EXECUTABLES := helloworld average wireroute
 
 # Compiler
 
