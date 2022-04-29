@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <pthread.h>
+#include <chrono>
 
 #define PARENT_PROCESS  (numProc - 1)
 #define PRINT_ERRORS 1
@@ -246,4 +247,10 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
     MPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, 0, comm);
     MPI_Bcast(recvbuf, recvcount * numProc, recvtype, 0, comm);
     return 0;
+}
+
+double MPI_Wtime() {
+    using namespace std::chrono;
+    auto tp = std::chrono::high_resolution_clock::now();
+    return (double) tp.time_since_epoch().count() / 1e9;
 }

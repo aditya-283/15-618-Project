@@ -1,9 +1,8 @@
-#include "headers/mpi.h"
+#include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <chrono>
 
 #define ROOT_PROC       0
 #define ARRAY_SIZE      1000000000
@@ -14,11 +13,8 @@ int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &procId);
     MPI_Comm_size(MPI_COMM_WORLD, &nProc);
-    
-    using namespace std::chrono;
-    typedef std::chrono::high_resolution_clock Clock;
-    typedef std::chrono::duration<double> dsec;
-    auto initStart = Clock::now();
+
+    double initStart = MPI_Wtime();
 
     long int chunkSize = ARRAY_SIZE / nProc;
     int *intArray = (int *) malloc(sizeof(int) * chunkSize);
@@ -50,9 +46,9 @@ int main(int argc, char* argv[]) {
         }
         finalAvg /= nProc;
 
-        auto compComplete = Clock::now();
+        double compComplete = MPI_Wtime();
         printf("Final Average is %lf\n", finalAvg);
-        printf("Computation took %lf seconds\n", duration_cast<dsec>(compComplete - initStart).count());
+        printf("Computation took %lf seconds\n", (compComplete - initStart));
 
     }
 

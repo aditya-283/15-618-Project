@@ -13,8 +13,18 @@ LIBOBJ := $(OBJDIR)/mpi.o $(OBJDIR)/socket.o $(OBJDIR)/rio.o
 EXECUTABLES := helloworld average serialAverage wireroute
 
 # Compiler
+
 CXX := g++ -m64 -std=c++11
 CXXFLAGS := -pthread -I. -O3 -Wall
+
+CXX_MPI := mpic++ 
+CXXFLAGS_MPI := -I. -O3
+
+# CXX_APP := $(CXX)
+# CXXFLAGS_APP := $(CXXFLAGS)
+
+CXX_APP := $(CXX_MPI)
+CXXFLAGS_APP := $(CXXFLAGS_MPI)
 
 .PHONY : all clean dirs
 
@@ -27,7 +37,7 @@ mpirun : $$(patsubst %,$(OBJDIR)/%.o,$$@) $(LIBOBJ)
 
 .SECONDEXPANSION:
 $(EXECUTABLES) : $$(patsubst %,$(OBJDIR)/%.o,$$@) $(LIBOBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $(EXEDIR)/$@
+	$(CXX_APP) $(CXXFLAGS_APP) $^ -o $(EXEDIR)/$@
 
 # Library Object Files
 $(OBJDIR)/%.o : $(LIBDIR)/%.cpp
@@ -35,7 +45,7 @@ $(OBJDIR)/%.o : $(LIBDIR)/%.cpp
 
 # Application Code Objects
 $(OBJDIR)/%.o : $(SRCDIR)/%.cpp
-	$(CXX) $< $(CXXFLAGS) -c -o $@
+	$(CXX_APP) $< $(CXXFLAGS_APP) -c -o $@
 
 
 dirs :

@@ -1,5 +1,5 @@
 #include "headers/wireroute.h"
-#include "headers/mpi.h"
+#include "mpi.h"
 #include <assert.h>
 #include <cstdio>
 #include <cstdlib>
@@ -10,7 +10,6 @@
 #include <vector>
 #include <algorithm>
 #include <math.h>
-#include <chrono>
 
 /* -------------- PRE-PROCESSOR DIRECTIVES -------------- */
 #define ROOT_PROC 0
@@ -560,17 +559,12 @@ int main(int argc, char* argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &procId);
     MPI_Comm_size(MPI_COMM_WORLD, &nProc);
 
-    using namespace std::chrono;
-    typedef std::chrono::high_resolution_clock Clock;
-    typedef std::chrono::duration<double> dsec;
-
-    char fileName[100] = "./wireInputs/easy_1024.txt";
+    char fileName[100] = "wireInputs/easy_1024.txt";
     readInputFile(fileName);
-    auto initStart = Clock::now();
+    double initStart = MPI_Wtime();
     compute(procId, nProc, 0.1, 5);
     if (procID == 0) {
-        auto compComplete = Clock::now();
-        printf("Computation took %lf seconds\n", duration_cast<dsec>(compComplete - initStart).count());
+        printf("Computation took %lf seconds\n", MPI_Wtime() - initStart);
         writeCostFile(fileName);
         writeOutputFile(fileName);
     }
