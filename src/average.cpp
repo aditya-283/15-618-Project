@@ -1,4 +1,4 @@
-#include "mpi.h"
+#include "headers/mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

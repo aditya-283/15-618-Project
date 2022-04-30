@@ -12,26 +12,38 @@
 #include <string.h>
 #include <pthread.h>
 #include <chrono>
+#include <algorithm>
 
 #define PARENT_PROCESS  (numProc - 1)
 #define PRINT_ERRORS 1
 #define PRINT_MESSAGES 1
 
-#define printError(funcName, ...);                                      \
-        if (PRINT_ERRORS) {                                             \
-            printf("MPI.CPP  Process %d: Error in %s() - ", procId, funcName);\
-            printf(__VA_ARGS__);                                        \
-            printf("\n");                                               \
+#define FAPPLY(f, a, b, t) *(t*)a = f(*(t*)a, *(t*)b)
+#define OPAPPLY(op, a, b, t) *(t*)a = *(t*)a op *(t*)b
+
+#define PERFORMF(f, a, b, t) if (t == MPI_INT) FAPPLY(f, a, b, int);                \
+                            else if (t == MPI_FLOAT) FAPPLY(f, a, b, float);        \
+                            else if (t == MPI_LONG) FAPPLY(f, a, b, long);          \
+                            else if (t == MPI_DOUBLE) FAPPLY(f, a, b, double);  
+
+#define PERFORMOP(op, a, b, t) if (t == MPI_INT) OPAPPLY(op, a, b, int);            \
+                             else if (t == MPI_FLOAT) OPAPPLY(op, a, b, float);     \
+                             else if (t == MPI_LONG) OPAPPLY(op, a, b, long);       \
+                             else if (t == MPI_DOUBLE) OPAPPLY(op, a, b, double);
+
+#define printError(funcName, ...);                                              \
+        if (PRINT_ERRORS) {                                                     \
+            printf("MPI.CPP  Process %d: Error in %s() - ", procId, funcName);  \
+            printf(__VA_ARGS__);                                                \
+            printf("\n");                                                       \
         }
 
-#define printMessage(...);                                              \
-        if (PRINT_MESSAGES) {                                           \
-            printf("MPI.CPP  Process %d: ", procId);                 \
-            printf(__VA_ARGS__);                                        \
-            printf("\n");                                               \
+#define printMessage(...);                                                      \
+        if (PRINT_MESSAGES) {                                                   \
+            printf("MPI.CPP  Process %d: ", procId);                            \
+            printf(__VA_ARGS__);                                                \
+            printf("\n");                                                       \
         }
-
-#define min(a, b) {(a) < (b) ? (a) : (b)}
 
 typedef struct {
     int proc;
@@ -83,6 +95,24 @@ int MPI_Comm_size(MPI_Comm comm, int* size) {
     return 0;
 }
 
+int msizeof(MPI_Datatype type) {
+    switch (type) {
+        case MPI_CHAR:
+            return sizeof(char);
+        case MPI_INT:
+            return sizeof(int);
+        case MPI_LONG:
+            return sizeof(long);
+        case MPI_FLOAT:
+            return sizeof(float);
+        case MPI_DOUBLE:
+            return sizeof(double);
+        default:
+            printError("msizeof", "No such datatype %d", type);
+            return -1;
+    }
+}
+
 int MPI_Finalize(void) {
     for (int index = 0; index < numProc; index ++) {
         if (close(listenfd[index])) {
@@ -99,7 +129,7 @@ int MPI_Finalize(void) {
     return 0;
 }
 
-int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
+int MPI_Send(void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
     int destFd = -1;
     ssize_t bytes_transacted = 0;
     
@@ -109,8 +139,8 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
     }
 
     // Send the data to the destination process
-    bytes_transacted = rio_writen(destFd, buf, count * datatype);
-    if (bytes_transacted < (ssize_t)(count * datatype)) {
+    bytes_transacted = rio_writen(destFd, buf, count * msizeof(datatype));
+    if (bytes_transacted < (ssize_t)(count * msizeof(datatype))) {
         printError("MPI_Send", "Short write detected!");
         close(destFd);
         return -1;
@@ -137,8 +167,8 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
     
     // Read the data and save it into the buffer
     rio_readinitb(&sourceRio, sourceFd);
-    while ((bytes_transacted = rio_readnb(&sourceRio, (char *)buf + readUntilNow, count * datatype))) {
-        if (readUntilNow > (ssize_t)(count * datatype)) break;
+    while ((bytes_transacted = rio_readnb(&sourceRio, (char *)buf + readUntilNow, count * msizeof(datatype)))) {
+        if (readUntilNow > (ssize_t)(count * msizeof(datatype))) break;
         readUntilNow += bytes_transacted;
     }
     close(sourceFd);
@@ -187,7 +217,7 @@ static void *rootReceiveData(void *varg) {
     return 0;
 }
 
-int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
+int MPI_Gather(void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
     if (procId == root) {
         // Receive data from other processes
         pthread_t threadId[numProc];
@@ -197,11 +227,11 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
             threadArg->proc = sourceProc;
             threadArg->count = recvcount;
             threadArg->datatype = recvtype;
-            threadArg->buf = (void*) ((char *) recvbuf + (recvcount * recvtype * sourceProc));
+            threadArg->buf = (void*) ((char *) recvbuf + (recvcount * msizeof(recvtype) * sourceProc));
             pthread_create(&threadId[sourceProc], NULL, rootReceiveData, (void *) threadArg);
         }
-        void *destBuf = (void *)((char *) recvbuf + (recvcount * recvtype * root));
-        memcpy(destBuf, sendbuf, sendcount * sendtype);
+        void *destBuf = (void *)((char *) recvbuf + (recvcount * msizeof(recvtype) * root));
+        memcpy(destBuf, sendbuf, sendcount * msizeof(sendtype));
 
         for (int i = 0; i < numProc; i ++) {
             if (i == root) continue;
@@ -225,10 +255,10 @@ int MPI_Scatter(void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvb
             threadArg->proc = destProc;
             threadArg->count = sendcount;
             threadArg->datatype = sendtype;
-            threadArg->buf = (void *) ((char *) sendbuf + (sendcount * sendtype * destProc));
+            threadArg->buf = (void *) ((char *) sendbuf + (sendcount * msizeof(sendtype) * destProc));
             pthread_create(&threadId[destProc], NULL, rootSendData, (void *) threadArg);
         }
-        memcpy(recvbuf, sendbuf, sendcount * sendtype);
+        memcpy(recvbuf, sendbuf, sendcount * msizeof(sendtype));
 
         for (int i = 0; i < numProc; i ++) {
             if (i == root) continue;
@@ -243,9 +273,132 @@ int MPI_Scatter(void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvb
 }
 
 
-int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
-    MPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, 0, comm);
-    MPI_Bcast(recvbuf, recvcount * numProc, recvtype, 0, comm);
+int MPI_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
+    if (MPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, 0, comm) < 0) {
+        printError("MPI_Allgather", "Error in gather step!");
+        return -1;
+    };
+    if (MPI_Bcast(recvbuf, recvcount * numProc, recvtype, 0, comm) < 0) {
+        printError("MPI_Allgather", "Error in broadcast step!");
+        return -1;
+    };
+    return 0;
+}
+
+int performOp(MPI_Op op, void* accLoc, void* reduceLoc, MPI_Datatype datatype) {
+    switch (op) {
+        case MPI_SUM:
+            PERFORMOP(+, accLoc, reduceLoc, datatype)
+            break;
+        case  MPI_MAX:
+            PERFORMF(std::max, accLoc, reduceLoc, datatype)
+            break;
+        case MPI_MIN:
+            PERFORMF(std::min, accLoc, reduceLoc, datatype)
+            break;
+        case MPI_PROD:
+            PERFORMOP(*, accLoc, reduceLoc, datatype)
+            break;
+        case MPI_LAND:
+            PERFORMOP(&&, accLoc, reduceLoc, datatype)
+            break;
+        case MPI_LOR:
+            PERFORMOP(||, accLoc, reduceLoc, datatype)
+            break;
+        default:
+            return -1;
+    }
+    return 0;
+} 
+
+int validateDatatype(MPI_Datatype datatype, MPI_Op op) {
+    if (datatype == MPI_CHAR) return -1;
+    if ((op == MPI_LAND || op == MPI_LOR ) && (datatype == MPI_FLOAT || datatype == MPI_DOUBLE)) {
+            return -1;
+    } 
+    return 0;
+}
+
+int MPI_Reduce(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm) {
+    if (validateDatatype(datatype, op) < 0) {
+        printError("MPI_Reduce", "Unexpected datatype %d for operation %d!", datatype, op);
+        return -1;
+    }
+    if (procId == root) {
+        void* gatherbuf = malloc(msizeof(datatype) * count * numProc);
+        MPI_Gather(sendbuf, count, datatype, gatherbuf, count, datatype, root, comm);
+        memcpy(recvbuf, gatherbuf, msizeof(datatype) * count);
+        for (int i=0; i<count; i++) {
+            for (int j=1; j<numProc; j++) {
+                if (performOp(op, 
+                    (void*)((char*)recvbuf + i * msizeof(datatype)),  
+                    (void*)((char*)gatherbuf + (j*count + i) * msizeof(datatype)),
+                    datatype) < 0) {
+                    printError("MPI_Reduce", "Operation %d not implemented!", op);
+                    return -1;
+                };
+            }
+        }
+    } else {
+        MPI_Gather(sendbuf, count, datatype, NULL, count, datatype, root, comm);
+    }
+    return 0;    
+}
+
+// naive implementation
+int MPI_Allreduce(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) {
+    if (MPI_Reduce(sendbuf, recvbuf, count, datatype, op, 0, comm) < 0) {
+        printError("MPI_Allreduce", "Error in reduction step!");
+        return -1;
+    }
+    if (MPI_Bcast(recvbuf, count, datatype, 0, comm) < 0) {
+        printError("MPI_Allreduce", "Error in broadcast step!");
+        return -1;
+    }
+    return 0;
+}
+
+// tree based implementation, only supported if numProc is a power of 2.
+int MPI_treereduce(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm) {
+    if (root != 0) {
+        printError("MPI_treereduce", "Tree reduce only supported for root = 0!");
+        return -1;
+    }
+    if (procId == 0) { // root main reducer
+        int largestPowerOf2 = (numProc & ~(numProc-1));
+        for (int i=1; i<largestPowerOf2; i<<=1) {
+            MPI_Status status;
+            MPI_Recv(recvbuf, count, datatype, i, 0, comm, &status);
+            for (int j=0; j<count; j++) {
+                if (performOp(op, 
+                    (void*)((char*)sendbuf + j * msizeof(datatype)),  
+                    (void*)((char*)recvbuf + j * msizeof(datatype)),
+                    datatype) < 0) {
+                    printError("MPI_treereduce", "Operation %d not implemented!", op);
+                    return -1;
+                };
+            }
+        }
+        memcpy(recvbuf, sendbuf, count * msizeof(datatype));
+    } else {
+        int rank = procId;
+        int largestPowerOf2 = (rank & ~(rank-1));
+        for (int i=1; i<largestPowerOf2; i<<=1) {
+            MPI_Status status;
+            MPI_Recv(recvbuf, count, datatype, procId + i, 0, comm, &status);
+            for (int j=0; j<count; j++) {
+                if (performOp(op, 
+                    (void*)((char*)sendbuf + j * msizeof(datatype)),  
+                    (void*)((char*)recvbuf + j * msizeof(datatype)),
+                    datatype) < 0) {
+                    printError("MPI_treereduce", "Operation %d not implemented!", op);
+                    return -1;
+                };
+            }
+        }
+
+        MPI_Send(sendbuf, count, datatype, rank - largestPowerOf2, 0, comm);
+    }
     return 0;
 }
 

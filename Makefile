@@ -20,11 +20,11 @@ CXXFLAGS := -pthread -I. -O3 -Wall
 CXX_MPI := mpic++ 
 CXXFLAGS_MPI := -I. -O3
 
-# CXX_APP := $(CXX)
-# CXXFLAGS_APP := $(CXXFLAGS)
+CXX_APP := $(CXX)
+CXXFLAGS_APP := $(CXXFLAGS)
 
-CXX_APP := $(CXX_MPI)
-CXXFLAGS_APP := $(CXXFLAGS_MPI)
+# CXX_APP := $(CXX_MPI)
+# CXXFLAGS_APP := $(CXXFLAGS_MPI)
 
 .PHONY : all clean dirs
 
