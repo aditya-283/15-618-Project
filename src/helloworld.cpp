@@ -9,8 +9,8 @@
 #define GATHER              0
 #define SCATTER             0
 #define ALLGATHER           0
-#define REDUCE              0
-#define TREEREDUCE          1
+#define REDUCE              1
+#define TREEREDUCE          0
 #define ALLREDUCE           0
 #define ROOT_PROCESS        0
 

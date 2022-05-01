@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <chrono>
 #include <algorithm>
+#include <fcntl.h>
 
 #define PARENT_PROCESS  (numProc - 1)
 #define PRINT_ERRORS 1
@@ -52,15 +53,57 @@ typedef struct {
     void *buf;
 } threadArgs_t;
 
+static int commonPgid;
 static int numProc, procId;
 static int *listenfd;
 static char **listenPortStrings, **writePortStrings;
 static struct sockaddr_storage clientaddr;
 
+
+
+typedef void handler_t(int);
+
+
+// Safe, wrapped sigaction
+handler_t *Signal(int signum, handler_t *handler) {
+    struct sigaction action, old_action;
+
+    action.sa_handler = handler;
+    sigemptyset(&action.sa_mask); /* Block sigs of type being handled */
+    action.sa_flags = SA_RESTART; /* Restart syscalls if possible */
+
+    if (sigaction(signum, &action, &old_action) < 0) {
+        perror("Signal error");
+        exit(1);
+    }
+
+    return old_action.sa_handler;
+}
+
+int isValidFd(int fd) {
+    return fcntl(fd, F_GETFD) != -1 || errno != EBADF;
+}
+
+void sigintHandler(int sig) {
+    int olderrno = errno;
+    sigset_t mask_all, prev_all;
+    sigfillset(&mask_all);
+    sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
+
+    if (procId == PARENT_PROCESS) {
+        kill(-1 * commonPgid, SIGINT);
+    }
+    MPI_Finalize(); // reap all children, which closes all open ports
+
+    sigprocmask(SIG_SETMASK, &prev_all, NULL);
+    errno = olderrno;
+    exit(-1);
+}
+
 int MPI_Init(int *argc, char*** argv) {
+    sscanf((*argv)[--(*argc)], "PGID=%d", &commonPgid);
     numProc = atoi((*argv)[--(*argc)]);
     procId = atoi((*argv)[--(*argc)]);
-
     listenPortStrings = (char**) malloc(numProc * sizeof(char*));
     for (int i = 0; i < numProc; i++) {
         listenPortStrings[i] = (*argv)[*argc - 2 * numProc + i];
@@ -82,8 +125,12 @@ int MPI_Init(int *argc, char*** argv) {
             return -1;
         }
     }
+    Signal(SIGINT, sigintHandler); // Handles Ctrl-C
+    Signal(SIGCHLD, sigintHandler); // Handles children dying
+    Signal(SIGTSTP, sigintHandler); // Handles Ctrl-Z
     return 0;
 }
+
 
 int MPI_Comm_rank(MPI_Comm comm, int* rank) {
     *rank = procId;
@@ -114,9 +161,14 @@ int msizeof(MPI_Datatype type) {
 }
 
 int MPI_Finalize(void) {
+    if (procId == PARENT_PROCESS) {
+        printMessage("Cleaning up before exit ...\n");
+    }
     for (int index = 0; index < numProc; index ++) {
-        if (close(listenfd[index])) {
-            printError("MPI_Finalize", "Unable to close listenfd %d.", index);
+        if (isValidFd(listenfd[index]) && close(listenfd[index]) < 0) {
+            printMessage("Closing failed for fd %d!", listenfd[index]);
+        } else {
+            // printMessage("Closing successful for fd %d!", listenfd[index]);
         }
     }
 

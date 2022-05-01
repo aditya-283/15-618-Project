@@ -15,9 +15,9 @@ static void printUsage(void) {
 
 
 
-char** getNewArgv(int argc, char** argv, int procId, int numProc, int* portIds) {    
+char** getNewArgv(int argc, char** argv, int procId, int numProc, int commonPgid, int* portIds) {    
     int j = 0;
-    char** newArgv = (char**) malloc((argc + (2 * numProc) + 3) * sizeof(char*));
+    char** newArgv = (char**) malloc((argc + (2 * numProc) + 4) * sizeof(char*));
 
     // Copy existing argv
     for (j = 0; j < argc; j ++) {
@@ -43,6 +43,9 @@ char** getNewArgv(int argc, char** argv, int procId, int numProc, int* portIds) 
     newArgv[j] = (char *) malloc(10 * sizeof(char));
     snprintf(newArgv[j++], 10, "%d", numProc);
 
+    // Common PGID
+    newArgv[j] = (char *) malloc(15 * sizeof(char));
+    snprintf(newArgv[j++], 15, "PGID=%d", commonPgid);
     newArgv[j++] = NULL;
 
     return newArgv;
@@ -53,15 +56,18 @@ void spawnProcesses(int numProc, int argc, char**argv, char* executable, int* po
     char** newArgv;
 
     for (int procId = 0; procId < numProc; procId ++) {
+        setpgid(getpid(), getpid());
+        int commonPgid = getpgid(getpid());
         int pid = fork();
         if (pid == 0) {
-            // parent
-            newArgv = getNewArgv(argc, argv, procId, numProc, portIds);
+            // child
+            setpgid(getpid(), getpgid(getppid()));
+            newArgv = getNewArgv(argc, argv, procId, numProc, commonPgid, portIds);
             execve(executable, newArgv, NULL);
         } else {
-            // child
+            // parent
             if (procId == numProc - 2) {
-                newArgv = getNewArgv(argc, argv, procId + 1, numProc, portIds);
+                newArgv = getNewArgv(argc, argv, procId + 1, numProc, commonPgid, portIds);
                 execve(executable, newArgv, NULL);
             }
         }
