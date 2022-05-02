@@ -14,6 +14,8 @@
 #include <chrono>
 #include <algorithm>
 #include <fcntl.h>
+#include <signal.h>
+#include <netdb.h>
 
 #define PARENT_PROCESS  (numProc - 1)
 #define PRINT_ERRORS 1
