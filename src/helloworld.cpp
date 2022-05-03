@@ -7,10 +7,14 @@
 #define SYNC_SEND_RECEIVE   0
 #define BROADCAST           0
 #define GATHER              0
-#define SCATTER             1
+#define SCATTER             0
 #define ALLGATHER           0
-
+#define REDUCE              1
+#define TREEREDUCE          0
+#define ALLREDUCE           0
 #define ROOT_PROCESS        0
+
+#define ARRAYSIZE 250
 
 int main(int argc, char* argv[]) {
     int nProc=0, procId=0;
@@ -19,7 +23,7 @@ int main(int argc, char* argv[]) {
     
     MPI_Comm_rank(MPI_COMM_WORLD, &procId);
     MPI_Comm_size(MPI_COMM_WORLD, &nProc);
-
+    double initTime = MPI_Wtime();
 #if SYNC_SEND_RECEIVE
     char buf[100];
     if ((procId % 2) == 0) {
@@ -94,7 +98,34 @@ int main(int argc, char* argv[]) {
         }
         printf("\n");
     }
-#endif
+#elif REDUCE
+    int* output = (int*)malloc(ARRAYSIZE * sizeof(int));
+    int* data = (int*)malloc(ARRAYSIZE * sizeof(int));
+    for (int i=0; i<ARRAYSIZE; i++) data[i] = procId;
+    MPI_Reduce(data, output, ARRAYSIZE, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (procId == 0) {
+        printf("Process %d: Reduced value: %d\n", procId, output[ARRAYSIZE-1]);
+    }
+#elif TREEREDUCE
+    int* output = (int*)malloc(ARRAYSIZE * sizeof(int));
+    int* data = (int*)malloc(ARRAYSIZE * sizeof(int));
+    for (int i=0; i<ARRAYSIZE; i++) data[i] = procId;
+    MPI_treereduce(data, output, ARRAYSIZE, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (procId == 0) {
+        printf("Process %d: Reduced value: %d\n", procId, output[ARRAYSIZE-1]);
+    }
+#elif ALLREDUCE
+    int output[ARRAYSIZE];
+    int data[ARRAYSIZE];
+    for (int i=0; i<ARRAYSIZE; i++) data[i] = procId;
+    MPI_Allreduce(data, output, ARRAYSIZE, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    if (procId == 125) {
+        printf("Process %d: Reduced value: %d\n", procId, output[ARRAYSIZE-1]);
+    }
 
+#endif
+    double endTime = MPI_Wtime();
+    if (procId == 0)
+        printf("Experiment took %lf seconds.\n", endTime - initTime);
     MPI_Finalize();
 }

@@ -1,5 +1,5 @@
 #include "headers/wireroute.h"
-#include "mpi.h"
+#include "headers/mpi.h"
 #include <assert.h>
 #include <cstdio>
 #include <cstdlib>
