@@ -128,7 +128,7 @@ int MPI_Init(int *argc, char*** argv) {
         }
     }
     Signal(SIGINT, sigintHandler); // Handles Ctrl-C
-    Signal(SIGCHLD, sigintHandler); // Handles children dying
+    // Signal(SIGCHLD, sigintHandler); // Handles children dying
     Signal(SIGTSTP, sigintHandler); // Handles Ctrl-Z
     return 0;
 }
@@ -164,11 +164,11 @@ int msizeof(MPI_Datatype type) {
 
 int MPI_Finalize(void) {
     if (procId == PARENT_PROCESS) {
-        printMessage("Cleaning up before exit ...\n");
+        // printMessage("Cleaning up before exit ...");
     }
     for (int index = 0; index < numProc; index ++) {
-        if (isValidFd(listenfd[index]) && close(listenfd[index]) < 0) {
-            printMessage("Closing failed for fd %d!", listenfd[index]);
+        if ((isValidFd(listenfd[index])) && (close(listenfd[index]) < 0)) {
+            printError("MPI_Finalize", "Closing failed for fd %d!", listenfd[index]);
         } else {
             // printMessage("Closing successful for fd %d!", listenfd[index]);
         }

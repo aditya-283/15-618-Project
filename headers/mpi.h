@@ -28,8 +28,6 @@ typedef enum MPI_Op_ {
     MPI_LOR
 } MPI_Op;
 
-int msizeof(MPI_Datatype type);
-
 int MPI_Init(int *argc, char*** argv);
 
 int MPI_Comm_rank(MPI_Comm comm, int* rank);
