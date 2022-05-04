@@ -191,8 +191,8 @@ struct wireLessThan
 {
     inline bool operator()(const wire_t &wire1, const wire_t &wire2)
     {
-        int minY1 = (wire1.y1 < wire1.y1) ? wire1.y1 : wire1.y2;
-        int minY2 = (wire2.y1 < wire2.y1) ? wire2.y1 : wire2.y2;
+        int minY1 = (wire1.y1 < wire1.y2) ? wire1.y1 : wire1.y2;
+        int minY2 = (wire2.y1 < wire2.y2) ? wire2.y1 : wire2.y2;
         return (minY1 < minY2);
         // return (wire1.y1 < wire2.y1);
     }
