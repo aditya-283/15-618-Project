@@ -1,4 +1,9 @@
+#ifdef OUR_MPI
 #include "headers/mpi.h"
+#else
+#include "mpi.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -102,16 +107,16 @@ int main(int argc, char* argv[]) {
     int* output = (int*)malloc(ARRAYSIZE * sizeof(int));
     int* data = (int*)malloc(ARRAYSIZE * sizeof(int));
     for (int i=0; i<ARRAYSIZE; i++) data[i] = procId;
-    MPI_Reduce(data, output, ARRAYSIZE, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (procId == 0) {
+    MPI_Reduce(data, output, ARRAYSIZE, MPI_INT, MPI_SUM, ROOT_PROCESS, MPI_COMM_WORLD);
+    if (procId == ROOT_PROCESS) {
         printf("Process %d: Reduced value: %d\n", procId, output[ARRAYSIZE-1]);
     }
 #elif TREEREDUCE
     int* output = (int*)malloc(ARRAYSIZE * sizeof(int));
     int* data = (int*)malloc(ARRAYSIZE * sizeof(int));
     for (int i=0; i<ARRAYSIZE; i++) data[i] = procId;
-    MPI_treereduce(data, output, ARRAYSIZE, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (procId == 0) {
+    MPI_treereduce(data, output, ARRAYSIZE, MPI_INT, MPI_SUM, ROOT_PROCESS, MPI_COMM_WORLD);
+    if (procId == ROOT_PROCESS) {
         printf("Process %d: Reduced value: %d\n", procId, output[ARRAYSIZE-1]);
     }
 #elif ALLREDUCE
@@ -119,13 +124,13 @@ int main(int argc, char* argv[]) {
     int data[ARRAYSIZE];
     for (int i=0; i<ARRAYSIZE; i++) data[i] = procId;
     MPI_Allreduce(data, output, ARRAYSIZE, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    if (procId == 125) {
+    if (procId == ROOT_PROCESS) {
         printf("Process %d: Reduced value: %d\n", procId, output[ARRAYSIZE-1]);
     }
 
 #endif
     double endTime = MPI_Wtime();
-    if (procId == 0)
+    if (procId == ROOT_PROCESS)
         printf("Experiment took %lf seconds.\n", endTime - initTime);
     MPI_Finalize();
 }

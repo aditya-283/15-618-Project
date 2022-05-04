@@ -1,4 +1,9 @@
+#ifdef OUR_MPI
 #include "headers/mpi.h"
+#else
+#include "mpi.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

@@ -1,5 +1,9 @@
-#include "headers/wireroute.h"
+#ifdef OUR_MPI
 #include "headers/mpi.h"
+#else
+#include "mpi.h"
+#endif
+#include "headers/wireroute.h"
 #include <assert.h>
 #include <cstdio>
 #include <cstdlib>
