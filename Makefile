@@ -10,25 +10,27 @@ EXEDIR := exec
 LIBOBJ := $(OBJDIR)/mpi.o $(OBJDIR)/socket.o $(OBJDIR)/rio.o
 
 # Executables
-EXECUTABLES := helloworld average wireroute
+EXECUTABLES := helloworld average wireroute dataSize timer
 
-# Compiler
+# Compiler - Please run "make clean" after changing the compiler
+# SEL_COMPILER := OPEN_MPI
+SEL_COMPILER := OUR_MPI
 
 CXX := g++ -m64 -std=c++11
 CXXFLAGS := -pthread -I. -O3 -Wall
 
-CXX_MPI := mpic++ 
-CXXFLAGS_MPI := -I. -O3
-
+ifeq ($(SEL_COMPILER), OPEN_MPI)
+CXX_APP := mpic++ 
+CXXFLAGS_APP := -I. -O3
+else
 CXX_APP := $(CXX)
-CXXFLAGS_APP := $(CXXFLAGS)
-
-# CXX_APP := $(CXX_MPI)
-# CXXFLAGS_APP := $(CXXFLAGS_MPI)
+CXXFLAGS_APP := $(CXXFLAGS) -D$(SEL_COMPILER)
+endif
 
 .PHONY : all clean dirs
 
 default : dirs mpirun $(EXECUTABLES)
+	@echo "Running with $(SEL_COMPILER)"
 
 # Executables
 .SECONDEXPANSION:
