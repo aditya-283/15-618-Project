@@ -26,14 +26,14 @@ int main(int argc, char* argv[]) {
         MPI_Finalize();
         return 0;
     }
-    int N_ITERS = 20;// atoi(argv[1]);
+    int N_ITERS = atoi(argv[1]);
     int dataSizes[] = {32, 256, 1024, 65536, 262144, 1048576, 16777216, 268435456};
 
     for (int i= 0; i<8; i++) {
         int bufSize = dataSizes[i];
-        double initTime = MPI_Wtime();
         char *buf = (char *) malloc(sizeof(char) * bufSize);
-
+        double initTime = MPI_Wtime();
+        
         for (int iters = 0; iters < N_ITERS; iters++){
 #ifdef SEND_RECV
                 if (procId % 2) {

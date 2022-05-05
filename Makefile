@@ -13,24 +13,24 @@ LIBOBJ := $(OBJDIR)/mpi.o $(OBJDIR)/socket.o $(OBJDIR)/rio.o
 EXECUTABLES := helloworld average wireroute dataSize timer
 
 # Compiler - Please run "make clean" after changing the compiler
-# SEL_COMPILER := OPEN_MPI
-SEL_COMPILER := OUR_MPI
+SELECT_MPI := OUR_MPI
+# SELECT_MPI := OPEN_MPI
 
 CXX := g++ -m64 -std=c++11
 CXXFLAGS := -pthread -I. -O3 -Wall
 
-ifeq ($(SEL_COMPILER), OPEN_MPI)
+ifeq ($(SELECT_MPI), OPEN_MPI)
 CXX_APP := mpic++ 
 CXXFLAGS_APP := -I. -O3
 else
 CXX_APP := $(CXX)
-CXXFLAGS_APP := $(CXXFLAGS) -D$(SEL_COMPILER)
+CXXFLAGS_APP := $(CXXFLAGS) -D$(SELECT_MPI)
 endif
 
 .PHONY : all clean dirs
 
 default : dirs mpirun $(EXECUTABLES)
-	@echo "Running with $(SEL_COMPILER)"
+	@echo "Running with $(SELECT_MPI)"
 
 # Executables
 .SECONDEXPANSION:
