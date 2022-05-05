@@ -5,6 +5,12 @@ Aditya Bhagwat (abhagwa2@andrew.cmu.edu)
 
 Karthik Bhat   (kbhat2@andrew.cmu.edu)
 
+## [UPDATE] Final Submission 05/04/2022
+
+### [Video](https://drive.google.com/file/d/1QER2JAOguoybMdFqD6Aq3Wxb-heA5BLk/view?usp=sharing)
+
+### [Project Report](https://github.com/razered/15-618-Project/blob/main/report/15-618_Project-Report.pdf)
+
 ## Summary
 In this project, we will implement a subset of Message Passing Interface (MPI) as a C++ library to parallelize programs across multiple cores of a single node. We aim to achieve good performance and scalability and evaluate these on multiple benchmarks. 
 
